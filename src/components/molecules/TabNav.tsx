@@ -1,0 +1,39 @@
+"use client";
+
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { TabButton } from "@/components/atoms/TabButton";
+
+export type TabId = "killers" | "statistics";
+
+interface Tab {
+  id: TabId;
+  label: string;
+}
+
+interface TabNavProps {
+  tabs: Tab[];
+  activeTab: TabId;
+  onTabChange: (id: TabId) => void;
+  className?: string;
+}
+
+export function TabNav({ tabs, activeTab, onTabChange, className }: TabNavProps) {
+  return (
+    <nav
+      role="tablist"
+      aria-label="Main navigation"
+      className={cn("flex gap-1 border-b border-subtle", className)}
+    >
+      {tabs.map((tab) => (
+        <TabButton
+          key={tab.id}
+          active={activeTab === tab.id}
+          onClick={() => onTabChange(tab.id)}
+        >
+          {tab.label}
+        </TabButton>
+      ))}
+    </nav>
+  );
+}
