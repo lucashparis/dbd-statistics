@@ -10,8 +10,12 @@ interface KillersTabTemplateProps {
   killers: KillerStats[];
   loadingWin: number | null;
   loadingLoss: number | null;
+  loadingUndoWin: number | null;
+  loadingUndoLoss: number | null;
   onWin: (id: number) => void;
   onLoss: (id: number) => void;
+  onUndoWin: (id: number) => void;
+  onUndoLoss: (id: number) => void;
   onNavigateToStats: (killer: KillerStats) => void;
 }
 
@@ -19,8 +23,12 @@ export function KillersTabTemplate({
   killers,
   loadingWin,
   loadingLoss,
+  loadingUndoWin,
+  loadingUndoLoss,
   onWin,
   onLoss,
+  onUndoWin,
+  onUndoLoss,
   onNavigateToStats,
 }: KillersTabTemplateProps) {
   const autocomplete = useAutocomplete(killers);
@@ -41,8 +49,12 @@ export function KillersTabTemplate({
         killers={displayed}
         loadingWin={loadingWin}
         loadingLoss={loadingLoss}
+        loadingUndoWin={loadingUndoWin}
+        loadingUndoLoss={loadingUndoLoss}
         onWin={onWin}
         onLoss={onLoss}
+        onUndoWin={onUndoWin}
+        onUndoLoss={onUndoLoss}
         onKillerClick={onNavigateToStats}
       />
     </div>

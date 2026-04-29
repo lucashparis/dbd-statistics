@@ -10,9 +10,13 @@ interface UseKillersReturn {
   error: string | null;
   loadingWin: number | null;
   loadingLoss: number | null;
+  loadingUndoWin: number | null;
+  loadingUndoLoss: number | null;
   fetchKillers: () => Promise<void>;
   registerWin: (id: number) => Promise<void>;
   registerLoss: (id: number) => Promise<void>;
+  undoWin: (id: number) => Promise<void>;
+  undoLoss: (id: number) => Promise<void>;
 }
 
 export function useKillers(initialKillers: Killer[]): UseKillersReturn {
@@ -23,6 +27,8 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
   const [error, setError] = useState<string | null>(null);
   const [loadingWin, setLoadingWin] = useState<number | null>(null);
   const [loadingLoss, setLoadingLoss] = useState<number | null>(null);
+  const [loadingUndoWin, setLoadingUndoWin] = useState<number | null>(null);
+  const [loadingUndoLoss, setLoadingUndoLoss] = useState<number | null>(null);
 
   const fetchKillers = useCallback(async () => {
     setIsLoading(true);
@@ -71,14 +77,50 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
     }
   }, []);
 
+  const undoWin = useCallback(async (id: number) => {
+    setLoadingUndoWin(id);
+    try {
+      const res = await fetch(`/api/killers/${id}/win/undo`, { method: "PATCH" });
+      if (!res.ok) throw new Error("Failed to undo win");
+      const updated: Killer = await res.json();
+      setKillers((prev) =>
+        prev.map((k) => (k.id === id ? computeStats(updated) : k))
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoadingUndoWin(null);
+    }
+  }, []);
+
+  const undoLoss = useCallback(async (id: number) => {
+    setLoadingUndoLoss(id);
+    try {
+      const res = await fetch(`/api/killers/${id}/loss/undo`, { method: "PATCH" });
+      if (!res.ok) throw new Error("Failed to undo loss");
+      const updated: Killer = await res.json();
+      setKillers((prev) =>
+        prev.map((k) => (k.id === id ? computeStats(updated) : k))
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoadingUndoLoss(null);
+    }
+  }, []);
+
   return {
     killers,
     isLoading,
     error,
     loadingWin,
     loadingLoss,
+    loadingUndoWin,
+    loadingUndoLoss,
     fetchKillers,
     registerWin,
     registerLoss,
+    undoWin,
+    undoLoss,
   };
 }

@@ -11,8 +11,12 @@ interface KillerGridProps {
   killers: KillerStats[];
   loadingWin: number | null;
   loadingLoss: number | null;
+  loadingUndoWin: number | null;
+  loadingUndoLoss: number | null;
   onWin: (id: number) => void;
   onLoss: (id: number) => void;
+  onUndoWin: (id: number) => void;
+  onUndoLoss: (id: number) => void;
   onKillerClick?: (killer: KillerStats) => void;
   className?: string;
 }
@@ -34,8 +38,12 @@ export function KillerGrid({
   killers,
   loadingWin,
   loadingLoss,
+  loadingUndoWin,
+  loadingUndoLoss,
   onWin,
   onLoss,
+  onUndoWin,
+  onUndoLoss,
   onKillerClick,
   className,
 }: KillerGridProps) {
@@ -63,8 +71,12 @@ export function KillerGrid({
           killer={killer}
           loadingWin={loadingWin === killer.id}
           loadingLoss={loadingLoss === killer.id}
+          loadingUndoWin={loadingUndoWin === killer.id}
+          loadingUndoLoss={loadingUndoLoss === killer.id}
           onWin={onWin}
           onLoss={onLoss}
+          onUndoWin={onUndoWin}
+          onUndoLoss={onUndoLoss}
           onKillerClick={onKillerClick}
         />
       ))}

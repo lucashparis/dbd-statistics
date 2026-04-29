@@ -12,8 +12,12 @@ interface KillerCardProps {
   killer: KillerStats;
   loadingWin?: boolean;
   loadingLoss?: boolean;
+  loadingUndoWin?: boolean;
+  loadingUndoLoss?: boolean;
   onWin: (id: number) => void;
   onLoss: (id: number) => void;
+  onUndoWin: (id: number) => void;
+  onUndoLoss: (id: number) => void;
   onKillerClick?: (killer: KillerStats) => void;
 }
 
@@ -21,8 +25,12 @@ export function KillerCard({
   killer,
   loadingWin = false,
   loadingLoss = false,
+  loadingUndoWin = false,
+  loadingUndoLoss = false,
   onWin,
   onLoss,
+  onUndoWin,
+  onUndoLoss,
   onKillerClick,
 }: KillerCardProps) {
   return (
@@ -69,8 +77,12 @@ export function KillerCard({
           killerId={killer.id}
           loadingWin={loadingWin}
           loadingLoss={loadingLoss}
+          loadingUndoWin={loadingUndoWin}
+          loadingUndoLoss={loadingUndoLoss}
           onWin={onWin}
           onLoss={onLoss}
+          onUndoWin={onUndoWin}
+          onUndoLoss={onUndoLoss}
         />
       </div>
     </article>

@@ -13,8 +13,17 @@ interface KillersPageClientProps {
 }
 
 export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
-  const { killers, loadingWin, loadingLoss, registerWin, registerLoss } =
-    useKillers(initialKillers);
+  const {
+    killers,
+    loadingWin,
+    loadingLoss,
+    loadingUndoWin,
+    loadingUndoLoss,
+    registerWin,
+    registerLoss,
+    undoWin,
+    undoLoss,
+  } = useKillers(initialKillers);
 
   const [activeTab, setActiveTab] = React.useState<TabId>("killers");
   const [statsNav, setStatsNav] = React.useState<{ killer: KillerStats; nonce: number } | null>(null);
@@ -33,8 +42,12 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
           killers={killers}
           loadingWin={loadingWin}
           loadingLoss={loadingLoss}
+          loadingUndoWin={loadingUndoWin}
+          loadingUndoLoss={loadingUndoLoss}
           onWin={registerWin}
           onLoss={registerLoss}
+          onUndoWin={undoWin}
+          onUndoLoss={undoLoss}
           onNavigateToStats={navigateToStats}
         />
       }
