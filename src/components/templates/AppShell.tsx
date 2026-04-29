@@ -12,16 +12,17 @@ const TABS = [
 interface AppShellProps {
   killersContent: React.ReactNode;
   statisticsContent: React.ReactNode;
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
 }
 
-export function AppShell({ killersContent, statisticsContent }: AppShellProps) {
-  const [activeTab, setActiveTab] = React.useState<TabId>("killers");
+export function AppShell({ killersContent, statisticsContent, activeTab, onTabChange }: AppShellProps) {
 
   return (
     <div className="min-h-dvh flex flex-col">
       <AppHeader />
       <div className="mx-auto w-full max-w-screen-2xl px-4 sm:px-6">
-        <TabNav tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} className="mt-4" />
+        <TabNav tabs={TABS} activeTab={activeTab} onTabChange={onTabChange} className="mt-4" />
       </div>
       <main className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-6 sm:px-6">
         <div role="tabpanel" hidden={activeTab !== "killers"}>

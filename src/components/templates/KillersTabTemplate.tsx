@@ -12,6 +12,7 @@ interface KillersTabTemplateProps {
   loadingLoss: number | null;
   onWin: (id: number) => void;
   onLoss: (id: number) => void;
+  onNavigateToStats: (killer: KillerStats) => void;
 }
 
 export function KillersTabTemplate({
@@ -20,6 +21,7 @@ export function KillersTabTemplate({
   loadingLoss,
   onWin,
   onLoss,
+  onNavigateToStats,
 }: KillersTabTemplateProps) {
   const autocomplete = useAutocomplete(killers);
 
@@ -41,6 +43,7 @@ export function KillersTabTemplate({
         loadingLoss={loadingLoss}
         onWin={onWin}
         onLoss={onLoss}
+        onKillerClick={onNavigateToStats}
       />
     </div>
   );

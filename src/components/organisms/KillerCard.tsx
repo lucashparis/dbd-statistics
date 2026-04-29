@@ -14,6 +14,7 @@ interface KillerCardProps {
   loadingLoss?: boolean;
   onWin: (id: number) => void;
   onLoss: (id: number) => void;
+  onKillerClick?: (killer: KillerStats) => void;
 }
 
 export function KillerCard({
@@ -22,6 +23,7 @@ export function KillerCard({
   loadingLoss = false,
   onWin,
   onLoss,
+  onKillerClick,
 }: KillerCardProps) {
   return (
     <article
@@ -30,8 +32,26 @@ export function KillerCard({
         "transition-all duration-300"
       )}
     >
-      <div className="relative aspect-[3/4]">
+      <div
+        className={cn(
+          "relative aspect-3/4",
+          onKillerClick && "cursor-pointer"
+        )}
+        onClick={() => onKillerClick?.(killer)}
+        role={onKillerClick ? "button" : undefined}
+        tabIndex={onKillerClick ? 0 : undefined}
+        aria-label={onKillerClick ? `View ${killer.name} statistics` : undefined}
+        onKeyDown={(e) => {
+          if (onKillerClick && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            onKillerClick(killer);
+          }
+        }}
+      >
         <KillerImage src={killer.imageUrl} alt={killer.name} className="absolute inset-0" />
+        {onKillerClick && (
+          <div className="absolute inset-0 bg-black/0 hover:bg-black/25 transition-colors duration-200" />
+        )}
         <div className="absolute bottom-0 left-0 right-0 p-3">
           <h3
             className="font-display text-sm font-bold uppercase tracking-wider text-white"

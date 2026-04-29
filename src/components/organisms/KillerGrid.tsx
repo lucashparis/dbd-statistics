@@ -13,13 +13,14 @@ interface KillerGridProps {
   loadingLoss: number | null;
   onWin: (id: number) => void;
   onLoss: (id: number) => void;
+  onKillerClick?: (killer: KillerStats) => void;
   className?: string;
 }
 
 function CardSkeleton() {
   return (
     <div className="card-dark overflow-hidden animate-pulse">
-      <div className="aspect-[3/4] bg-surface-3" />
+      <div className="aspect-3/4 bg-surface-3" />
       <div className="p-3 space-y-2">
         <div className="h-3 w-2/3 rounded bg-surface-3" />
         <div className="h-2 w-full rounded bg-surface-3" />
@@ -35,6 +36,7 @@ export function KillerGrid({
   loadingLoss,
   onWin,
   onLoss,
+  onKillerClick,
   className,
 }: KillerGridProps) {
   if (killers.length === 0) {
@@ -63,6 +65,7 @@ export function KillerGrid({
           loadingLoss={loadingLoss === killer.id}
           onWin={onWin}
           onLoss={onLoss}
+          onKillerClick={onKillerClick}
         />
       ))}
     </div>
