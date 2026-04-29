@@ -7,16 +7,18 @@ import { TabNav, type TabId } from "@/components/molecules/TabNav";
 const TABS = [
   { id: "killers" as TabId, label: "Killers" },
   { id: "statistics" as TabId, label: "Statistics" },
+  { id: "team" as TabId, label: "Team" },
 ];
 
 interface AppShellProps {
   killersContent: React.ReactNode;
   statisticsContent: React.ReactNode;
+  teamContent: React.ReactNode;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
 }
 
-export function AppShell({ killersContent, statisticsContent, activeTab, onTabChange }: AppShellProps) {
+export function AppShell({ killersContent, statisticsContent, teamContent, activeTab, onTabChange }: AppShellProps) {
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -30,6 +32,9 @@ export function AppShell({ killersContent, statisticsContent, activeTab, onTabCh
         </div>
         <div role="tabpanel" hidden={activeTab !== "statistics"}>
           {statisticsContent}
+        </div>
+        <div role="tabpanel" hidden={activeTab !== "team"}>
+          {teamContent}
         </div>
       </main>
     </div>
