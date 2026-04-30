@@ -53,7 +53,7 @@ export function MatchItem({ match, index }: MatchItemProps) {
             : "bg-blood/10 text-blood border-blood/30"
         )}
       >
-        {isWin ? "Vitória" : "Derrota"}
+        {isWin ? "Victory" : "Defeat"}
       </span>
     </li>
   );

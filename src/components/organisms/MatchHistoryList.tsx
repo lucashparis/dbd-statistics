@@ -38,8 +38,8 @@ export function MatchHistoryList({
     return (
       <EmptyState
         icon={ClipboardList}
-        title="Nenhuma partida registrada"
-        description="Registre vitórias e derrotas na aba Killers para ver o histórico aqui."
+        title="No matches recorded"
+        description="Register wins and losses in the Killers tab to see the history here."
       />
     );
   }
@@ -63,7 +63,7 @@ export function MatchHistoryList({
       {hasMore && !loadingMore && (
         <div className="flex justify-center pt-2">
           <Button variant="default" onClick={onLoadMore}>
-            Ver mais
+            Load more
           </Button>
         </div>
       )}

@@ -27,7 +27,7 @@ const TEAM_PLAYERS: TeamPlayer[] = [
     survivor: {
       name: "Feng Min",
       imageUrl: "/images/survivors/feng-arcade.webp",
-      skin: "Torneio de Fliperama",
+      skin: "Arcade Tournament",
     },
   },
   {
@@ -48,7 +48,7 @@ const TEAM_PLAYERS: TeamPlayer[] = [
     nick: "BreNaN",
     imageUrl: "/images/team/breno.webp",
     killer: {
-      name: "Trapaça",
+      name: "Trickster",
       imageUrl: "/images/killers/trickster.webp",
     },
     survivor: {
@@ -69,7 +69,7 @@ export function TeamTabTemplate() {
           className="font-display text-3xl sm:text-4xl font-bold tracking-widest text-white uppercase animate-fade-in-up glow-blood-text"
           style={{ animationDelay: "60ms" }}
         >
-          Nossa Equipe
+          Our Team
         </h2>
         <p
           className="text-muted text-sm tracking-widest animate-fade-in-up"

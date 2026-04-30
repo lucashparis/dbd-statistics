@@ -18,10 +18,10 @@ export function HistoryTabTemplate({ isActive }: HistoryTabTemplateProps) {
           className="text-xl font-bold text-white"
           style={{ fontFamily: "var(--font-cinzel), serif" }}
         >
-          Histórico de Partidas
+          Match History
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Todas as suas partidas registradas, da mais recente à mais antiga.
+          All your recorded matches, from most recent to oldest.
         </p>
       </div>
 

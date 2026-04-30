@@ -132,6 +132,12 @@ DATABASE_URL="postgresql://user:password@localhost:5432/dbd_statistics"
 
 ---
 
+## Language
+
+All user-facing text must be in **English** — labels, headings, descriptions, empty states, button text, and any other copy visible to the user. Do not use Portuguese or any other language in the UI. Date/time formatting may use `pt-BR` locale.
+
+---
+
 ## Key conventions
 
 - **No comments** unless the WHY is non-obvious. Well-named identifiers are enough.

@@ -8,7 +8,7 @@ const TABS = [
   { id: "killers" as TabId, label: "Killers" },
   { id: "statistics" as TabId, label: "Statistics" },
   { id: "team" as TabId, label: "Team" },
-  { id: "history" as TabId, label: "Histórico" },
+  { id: "history" as TabId, label: "History" },
 ];
 
 interface AppShellProps {
