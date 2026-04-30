@@ -17,6 +17,7 @@ interface KillersPageClientProps {
 export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
   const {
     killers,
+    isLoading,
     loadingWin,
     loadingLoss,
     loadingUndoWin,
@@ -42,6 +43,7 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
       killersContent={
         <KillersTabTemplate
           killers={killers}
+          isLoading={isLoading}
           loadingWin={loadingWin}
           loadingLoss={loadingLoss}
           loadingUndoWin={loadingUndoWin}
@@ -53,7 +55,7 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
           onNavigateToStats={navigateToStats}
         />
       }
-      statisticsContent={<StatisticsTabTemplate killers={killers} statsNav={statsNav} />}
+      statisticsContent={<StatisticsTabTemplate killers={killers} isLoading={isLoading} statsNav={statsNav} />}
       teamContent={<TeamTabTemplate />}
       historyContent={<HistoryTabTemplate isActive={activeTab === "history"} />}
     />

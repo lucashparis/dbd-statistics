@@ -11,6 +11,33 @@ interface KillerDetailPanelProps {
   className?: string;
 }
 
+KillerDetailPanel.Skeleton = function KillerDetailPanelSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "card-dark overflow-hidden",
+        "flex flex-col sm:flex-row gap-0 animate-pulse",
+        className
+      )}
+    >
+      <div className="relative h-64 sm:h-auto sm:w-48 shrink-0 bg-surface-3" />
+      <div className="flex flex-col justify-center gap-6 p-6 flex-1">
+        <div className="h-7 w-40 rounded bg-surface-3" />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-4 w-4 rounded bg-surface-3" />
+              <div className="h-6 w-12 rounded bg-surface-3" />
+              <div className="h-3 w-10 rounded bg-surface-3" />
+            </div>
+          ))}
+        </div>
+        <div className="h-4 w-full max-w-xs rounded bg-surface-3" />
+      </div>
+    </div>
+  );
+};
+
 export function KillerDetailPanel({ killer, className }: KillerDetailPanelProps) {
   return (
     <div

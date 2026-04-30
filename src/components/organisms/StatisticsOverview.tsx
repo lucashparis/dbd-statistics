@@ -13,6 +13,26 @@ interface StatisticsOverviewProps {
   className?: string;
 }
 
+StatisticsOverview.Skeleton = function StatisticsOverviewSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-6", className)}>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="card-dark p-4 flex flex-col items-center gap-2 animate-pulse">
+            <div className="h-5 w-5 rounded bg-surface-3" />
+            <div className="h-6 w-12 rounded bg-surface-3" />
+            <div className="h-3 w-16 rounded bg-surface-3" />
+          </div>
+        ))}
+      </div>
+      <div className="card-dark p-4 animate-pulse">
+        <div className="h-3 w-40 rounded bg-surface-3 mb-4" />
+        <div className="h-64 w-full rounded bg-surface-3" />
+      </div>
+    </div>
+  );
+};
+
 export function StatisticsOverview({ killers, selectedKiller, className }: StatisticsOverviewProps) {
   const totals = React.useMemo(() => {
     const target = selectedKiller ? [selectedKiller] : killers;

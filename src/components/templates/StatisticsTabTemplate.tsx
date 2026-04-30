@@ -9,10 +9,11 @@ import type { KillerStats } from "@/types/killer";
 
 interface StatisticsTabTemplateProps {
   killers: KillerStats[];
+  isLoading?: boolean;
   statsNav?: { killer: KillerStats; nonce: number } | null;
 }
 
-export function StatisticsTabTemplate({ killers, statsNav }: StatisticsTabTemplateProps) {
+export function StatisticsTabTemplate({ killers, isLoading, statsNav }: StatisticsTabTemplateProps) {
   const autocomplete = useAutocomplete(killers);
 
   React.useEffect(() => {
@@ -21,6 +22,15 @@ export function StatisticsTabTemplate({ killers, statsNav }: StatisticsTabTempla
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statsNav?.nonce]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="max-w-sm h-10 rounded-lg bg-surface-3 animate-pulse" />
+        <StatisticsOverview.Skeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
