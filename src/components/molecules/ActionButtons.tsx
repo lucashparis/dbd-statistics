@@ -29,8 +29,8 @@ export function ActionButtons({
   onUndoLoss,
 }: ActionButtonsProps) {
   return (
-    <div className="flex gap-2">
-      <div className="flex flex-1 gap-1">
+    <div className="flex flex-col gap-1.5">
+      <div className="flex gap-1">
         <Button
           variant="win"
           loading={loadingWin}
@@ -42,17 +42,6 @@ export function ActionButtons({
           Win
         </Button>
         <Button
-          variant="ghost"
-          loading={loadingUndoWin}
-          onClick={() => onUndoWin(killerId)}
-          className="px-2 text-emerald-600 hover:text-emerald-400"
-          aria-label="Undo win"
-        >
-          {!loadingUndoWin && <Icon icon={Undo2} size={12} />}
-        </Button>
-      </div>
-      <div className="flex flex-1 gap-1">
-        <Button
           variant="loss"
           loading={loadingLoss}
           onClick={() => onLoss(killerId)}
@@ -62,14 +51,27 @@ export function ActionButtons({
           {!loadingLoss && <Icon icon={Skull} size={12} />}
           Loss
         </Button>
+      </div>
+      <div className="flex gap-1">
+        <Button
+          variant="ghost"
+          loading={loadingUndoWin}
+          onClick={() => onUndoWin(killerId)}
+          className="flex-1 py-1 text-xs text-emerald-600 hover:text-emerald-400"
+          aria-label="Undo win"
+        >
+          {!loadingUndoWin && <Icon icon={Undo2} size={11} />}
+          Undo Win
+        </Button>
         <Button
           variant="ghost"
           loading={loadingUndoLoss}
           onClick={() => onUndoLoss(killerId)}
-          className="px-2 text-blood/70 hover:text-blood"
+          className="flex-1 py-1 text-xs text-blood/70 hover:text-blood"
           aria-label="Undo loss"
         >
-          {!loadingUndoLoss && <Icon icon={Undo2} size={12} />}
+          {!loadingUndoLoss && <Icon icon={Undo2} size={11} />}
+          Undo Loss
         </Button>
       </div>
     </div>
