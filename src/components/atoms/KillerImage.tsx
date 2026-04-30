@@ -26,6 +26,7 @@ export function KillerImage({
         className="object-cover object-top"
         priority={priority}
         sizes="(max-width: 768px) 50vw, 25vw"
+        unoptimized
       />
       {overlay && (
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/30 to-transparent" />
