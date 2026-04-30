@@ -5,6 +5,7 @@ import { AppShell } from "@/components/templates/AppShell";
 import { KillersTabTemplate } from "@/components/templates/KillersTabTemplate";
 import { StatisticsTabTemplate } from "@/components/templates/StatisticsTabTemplate";
 import { TeamTabTemplate } from "@/components/templates/TeamTabTemplate";
+import { HistoryTabTemplate } from "@/components/templates/HistoryTabTemplate";
 import { useKillers } from "@/hooks/useKillers";
 import type { TabId } from "@/components/molecules/TabNav";
 import type { KillerStats } from "@/types/killer";
@@ -54,6 +55,7 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
       }
       statisticsContent={<StatisticsTabTemplate killers={killers} statsNav={statsNav} />}
       teamContent={<TeamTabTemplate />}
+      historyContent={<HistoryTabTemplate isActive={activeTab === "history"} />}
     />
   );
 }

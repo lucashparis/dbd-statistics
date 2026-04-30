@@ -20,10 +20,17 @@ export async function PATCH(
     if (current.wins === 0) {
       return NextResponse.json(current);
     }
-    const killer = await prisma.killer.update({
-      where: { id: killerId },
-      data: { wins: { decrement: 1 } },
-    });
+
+    const [killer] = await Promise.all([
+      prisma.killer.update({
+        where: { id: killerId },
+        data: { wins: { decrement: 1 } },
+      }),
+      prisma.match
+        .findFirst({ where: { killerId, result: "win" }, orderBy: { createdAt: "desc" } })
+        .then((m) => (m ? prisma.match.delete({ where: { id: m.id } }) : null)),
+    ]);
+
     return NextResponse.json(killer);
   } catch {
     return NextResponse.json(

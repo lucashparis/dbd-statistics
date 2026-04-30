@@ -13,10 +13,15 @@ export async function PATCH(
   }
 
   try {
-    const killer = await prisma.killer.update({
-      where: { id: killerId },
-      data: { wins: { increment: 1 } },
-    });
+    const [killer] = await prisma.$transaction([
+      prisma.killer.update({
+        where: { id: killerId },
+        data: { wins: { increment: 1 } },
+      }),
+      prisma.match.create({
+        data: { killerId, result: "win" },
+      }),
+    ]);
     return NextResponse.json(killer);
   } catch {
     return NextResponse.json(

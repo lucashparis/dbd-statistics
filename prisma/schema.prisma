@@ -15,4 +15,13 @@ model Killer {
   losses    Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  matches   Match[]
+}
+
+model Match {
+  id        Int      @id @default(autoincrement())
+  killerId  Int
+  result    String
+  killer    Killer   @relation(fields: [killerId], references: [id])
+  createdAt DateTime @default(now())
 }

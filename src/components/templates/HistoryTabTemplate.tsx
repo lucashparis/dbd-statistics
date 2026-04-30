@@ -1,0 +1,37 @@
+"use client";
+
+import * as React from "react";
+import { MatchHistoryList } from "@/components/organisms/MatchHistoryList";
+import { useHistory } from "@/hooks/useHistory";
+
+interface HistoryTabTemplateProps {
+  isActive: boolean;
+}
+
+export function HistoryTabTemplate({ isActive }: HistoryTabTemplateProps) {
+  const { matches, hasMore, loading, loadingMore, loadMore } = useHistory(isActive);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2
+          className="text-xl font-bold text-white"
+          style={{ fontFamily: "var(--font-cinzel), serif" }}
+        >
+          Histórico de Partidas
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Todas as suas partidas registradas, da mais recente à mais antiga.
+        </p>
+      </div>
+
+      <MatchHistoryList
+        matches={matches}
+        hasMore={hasMore}
+        loading={loading}
+        loadingMore={loadingMore}
+        onLoadMore={loadMore}
+      />
+    </div>
+  );
+}
