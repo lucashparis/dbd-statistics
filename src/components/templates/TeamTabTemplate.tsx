@@ -53,7 +53,22 @@ const TEAM_PLAYERS: TeamPlayer[] = [
     },
     survivor: {
       name: "Sable Ward",
+      skin: "Clima Esquisito",
       imageUrl: "/images/survivors/sable.webp",
+    },
+  },
+  {
+    name: "Alison Gomes",
+    nick: "menob7",
+    imageUrl: "/images/team/alisson.webp",
+    killer: {
+      name: "Trickster",
+      imageUrl: "/images/killers/vecna.webp",
+    },
+    survivor: {
+      name: "Mikaela Reid",
+      skin: "Sessão de Banho de Sol",
+      imageUrl: "/images/survivors/mikaela.webp",
     },
   },
 ];
