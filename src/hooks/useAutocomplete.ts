@@ -56,13 +56,19 @@ export function useAutocomplete(killers: KillerStats[]): UseAutocompleteReturn {
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setHighlightedIndex((i) => Math.min(i + 1, suggestions.length - 1));
-      } else if (e.key === "ArrowUp") {
+        return;
+      }
+      if (e.key === "ArrowUp") {
         e.preventDefault();
         setHighlightedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === "Enter" && highlightedIndex >= 0) {
+        return;
+      }
+      if (e.key === "Enter" && highlightedIndex >= 0) {
         e.preventDefault();
         selectKiller(suggestions[highlightedIndex]);
-      } else if (e.key === "Escape") {
+        return;
+      }
+      if (e.key === "Escape") {
         setIsOpen(false);
       }
     },

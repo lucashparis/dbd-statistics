@@ -141,6 +141,7 @@ All user-facing text must be in **English** — labels, headings, descriptions, 
 ## Key conventions
 
 - **No comments** unless the WHY is non-obvious. Well-named identifiers are enough.
+- **Guard clauses over else** — return or throw early to handle error/edge cases first; never nest the happy path inside an `else` block. This keeps code flat and close to the left margin.
 - **Server Components** for initial data fetching; keep the client boundary (`'use client'`) as low as possible.
 - **Optimistic updates** in `useKillers` — update local state immediately, then sync on success/failure.
 - **Path alias** `@/*` maps to `src/*` — always use it for imports.

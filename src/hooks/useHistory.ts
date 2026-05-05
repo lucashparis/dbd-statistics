@@ -12,8 +12,8 @@ export function useHistory(isActive: boolean) {
   const initializedRef = React.useRef(false);
 
   const fetchPage = React.useCallback(async (pageNum: number, append: boolean) => {
+    if (!append) setLoading(true);
     if (append) setLoadingMore(true);
-    else setLoading(true);
 
     try {
       const res = await fetch(`/api/history?page=${pageNum}`);
@@ -21,8 +21,8 @@ export function useHistory(isActive: boolean) {
       setMatches((prev) => (append ? [...prev, ...data.matches] : data.matches));
       setHasMore(data.hasMore);
     } finally {
+      if (!append) setLoading(false);
       if (append) setLoadingMore(false);
-      else setLoading(false);
     }
   }, []);
 
