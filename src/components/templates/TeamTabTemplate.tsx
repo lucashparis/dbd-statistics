@@ -5,48 +5,48 @@ const TEAM_PLAYERS: TeamPlayer[] = [
   {
     name: "Lucas Paris",
     nick: "OldDeadMemories",
-    imageUrl: "/images/team/lucas.webp",
+    imageUrl: "/images/surv/lucas.webp",
     killer: {
       name: "Kaneki",
       imageUrl: "/images/killers/kaneki.webp",
     },
     survivor: {
       name: "Nea Karsson",
-      imageUrl: "/images/survivors/nea-eto.webp",
+      imageUrl: "/images/surv/paris.webp",
       skin: "Eto Yoshimura",
     },
   },
   {
     name: "Fran Coelho",
     nick: "Francyx",
-    imageUrl: "/images/team/fran.webp",
+    imageUrl: "/images/surv/francyx.webp",
     killer: {
-      name: "Spectro",
-      imageUrl: "/images/killers/wraith.webp",
+      name: "Spirit",
+      imageUrl: "/images/killers/spirit.webp",
     },
     survivor: {
       name: "Feng Min",
-      imageUrl: "/images/survivors/feng-arcade.webp",
+      imageUrl: "/images/surv/fran.webp",
       skin: "Arcade Tournament",
     },
   },
   {
     name: "Gabriel Zubioli",
     nick: "Zubioli",
-    imageUrl: "/images/team/gabriel.webp",
+    imageUrl: "/images/surv/gabriel.webp",
     killer: {
       name: "Spectro",
       imageUrl: "/images/killers/wraith.webp",
     },
     survivor: {
       name: "Feng Min",
-      imageUrl: "/images/survivors/feng.webp",
+      imageUrl: "/images/surv/zubioli.webp",
     },
   },
   {
     name: "Breno Antonuci",
     nick: "BreNaN",
-    imageUrl: "/images/team/breno.webp",
+    imageUrl: "/images/surv/brenan.webp",
     killer: {
       name: "Trickster",
       imageUrl: "/images/killers/trickster.webp",
@@ -54,21 +54,21 @@ const TEAM_PLAYERS: TeamPlayer[] = [
     survivor: {
       name: "Sable Ward",
       skin: "Clima Esquisito",
-      imageUrl: "/images/survivors/sable.webp",
+      imageUrl: "/images/surv/breno.webp",
     },
   },
   {
     name: "Alison Gomes",
     nick: "menob7",
-    imageUrl: "/images/team/alisson.webp",
+    imageUrl: "/images/surv/menob7.webp",
     killer: {
-      name: "Trickster",
+      name: "Vecna",
       imageUrl: "/images/killers/vecna.webp",
     },
     survivor: {
       name: "Mikaela Reid",
       skin: "Sessão de Banho de Sol",
-      imageUrl: "/images/survivors/mikaela.webp",
+      imageUrl: "/images/surv/alisson.webp",
     },
   },
 ];
