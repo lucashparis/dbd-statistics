@@ -24,4 +24,7 @@ model Match {
   result    String
   killer    Killer   @relation(fields: [killerId], references: [id])
   createdAt DateTime @default(now())
+
+  @@index([killerId])
+  @@index([createdAt])
 }
