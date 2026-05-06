@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Result {
+  win
+  loss
+}
+
 model Killer {
   id        Int      @id @default(autoincrement())
   name      String   @unique
@@ -21,7 +26,7 @@ model Killer {
 model Match {
   id        Int      @id @default(autoincrement())
   killerId  Int
-  result    String
+  result    Result
   killer    Killer   @relation(fields: [killerId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 

@@ -1,3 +1,5 @@
+import type { Result } from "@prisma/client";
+
 export interface Killer {
   id: number;
   name: string;
@@ -15,7 +17,7 @@ export interface KillerStats extends Killer {
 
 export type KillerUpdateAction = "win" | "loss";
 
-export type MatchResult = "win" | "loss";
+export type MatchResult = Result;
 
 export interface Match {
   id: number;
