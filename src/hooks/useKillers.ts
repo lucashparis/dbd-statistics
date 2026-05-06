@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { computeStats } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Killer, KillerStats } from "@/types/killer";
 
 interface UseKillersReturn {
@@ -39,7 +40,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
       const data: Killer[] = await res.json();
       setKillers(data.map(computeStats));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      const message = e instanceof Error ? e.message : "Unknown error";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +58,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
         prev.map((k) => (k.id === id ? computeStats(updated) : k))
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      const message = e instanceof Error ? e.message : "Unknown error";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoadingWin(null);
     }
@@ -71,7 +76,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
         prev.map((k) => (k.id === id ? computeStats(updated) : k))
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      const message = e instanceof Error ? e.message : "Unknown error";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoadingLoss(null);
     }
@@ -87,7 +94,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
         prev.map((k) => (k.id === id ? computeStats(updated) : k))
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      const message = e instanceof Error ? e.message : "Unknown error";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoadingUndoWin(null);
     }
@@ -103,7 +112,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
         prev.map((k) => (k.id === id ? computeStats(updated) : k))
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      const message = e instanceof Error ? e.message : "Unknown error";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoadingUndoLoss(null);
     }

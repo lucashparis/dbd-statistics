@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cinzel, Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -37,6 +38,14 @@ export default function RootLayout({
         className={`${cinzel.variable} ${geist.variable} ${jetbrainsMono.variable} antialiased scrollbar-dark`}
         style={{ fontFamily: "var(--font-geist), sans-serif" }}
       >
+        <Toaster
+          theme="dark"
+          position="top-right"
+          richColors
+          closeButton
+          expand
+          toastOptions={{ duration: 5000 }}
+        />
         {children}
       </body>
     </html>
