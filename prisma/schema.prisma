@@ -22,7 +22,7 @@ model Match {
   id        Int      @id @default(autoincrement())
   killerId  Int
   result    String
-  killer    Killer   @relation(fields: [killerId], references: [id])
+  killer    Killer   @relation(fields: [killerId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@index([killerId])
