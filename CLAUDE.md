@@ -132,6 +132,48 @@ DATABASE_URL="postgresql://user:password@localhost:5432/dbd_statistics"
 
 ---
 
+## Testing
+
+**Every new implementation must ship with tests.** Do not deliver a feature, hook, utility, component, or API route without a corresponding test file.
+
+### Stack
+
+- **Vitest** — test runner (`npm run test`)
+- **@testing-library/react** — component and hook testing
+- **@testing-library/user-event** — simulating user interactions
+- **@testing-library/jest-dom** — DOM assertion matchers
+
+### File placement
+
+Co-locate test files next to the source file they cover:
+
+```
+src/lib/utils.ts              → src/lib/utils.test.ts
+src/hooks/useKillers.ts       → src/hooks/useKillers.test.ts
+src/components/atoms/Button.tsx → src/components/atoms/Button.test.tsx
+src/app/api/killers/route.ts  → src/app/api/killers/route.test.ts
+```
+
+### What to test per layer
+
+| Layer | Focus |
+|-------|-------|
+| `atoms/` | Renders correctly, applies props/variants, accessible markup |
+| `molecules/` | Composed behavior, conditional rendering, props flow |
+| `organisms/` | User interactions, state changes, calls to hooks/callbacks |
+| `hooks/` | State transitions, optimistic updates, error paths |
+| `lib/utils` | Pure function input/output, edge cases |
+| `api/` routes | HTTP method responses, success and error status codes |
+
+### Rules
+
+- Test the **public contract** (rendered output, return values, HTTP responses), not implementation details.
+- Mock external dependencies at the boundary: Prisma in API tests, `fetch` in hook tests.
+- Cover the happy path and at least one error/edge case per unit.
+- Do not test Prisma schema or CSS — those are not logic.
+
+---
+
 ## Language
 
 All user-facing text must be in **English** — labels, headings, descriptions, empty states, button text, and any other copy visible to the user. Do not use Portuguese or any other language in the UI. Date/time formatting may use `pt-BR` locale.
@@ -140,6 +182,7 @@ All user-facing text must be in **English** — labels, headings, descriptions, 
 
 ## Key conventions
 
+- **Tests are mandatory** — every new feature, hook, utility, component, or API route must ship with a co-located `.test.ts` / `.test.tsx` file. See the Testing section for details.
 - **No comments** unless the WHY is non-obvious. Well-named identifiers are enough.
 - **Guard clauses over else** — return or throw early to handle error/edge cases first; never nest the happy path inside an `else` block. This keeps code flat and close to the left margin.
 - **Server Components** for initial data fetching; keep the client boundary (`'use client'`) as low as possible.
