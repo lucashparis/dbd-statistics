@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { computeStats } from "@/lib/utils";
 import type { Killer, KillerStats } from "@/types/killer";
 
@@ -30,7 +30,7 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
   const [loadingUndoWin, setLoadingUndoWin] = useState<number | null>(null);
   const [loadingUndoLoss, setLoadingUndoLoss] = useState<number | null>(null);
 
-  const fetchKillers = useCallback(async () => {
+  async function fetchKillers() {
     setIsLoading(true);
     setError(null);
     try {
@@ -43,9 +43,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }
 
-  const registerWin = useCallback(async (id: number) => {
+  async function registerWin(id: number) {
     setLoadingWin(id);
     try {
       const res = await fetch(`/api/killers/${id}/win`, { method: "PATCH" });
@@ -59,9 +59,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
     } finally {
       setLoadingWin(null);
     }
-  }, []);
+  }
 
-  const registerLoss = useCallback(async (id: number) => {
+  async function registerLoss(id: number) {
     setLoadingLoss(id);
     try {
       const res = await fetch(`/api/killers/${id}/loss`, { method: "PATCH" });
@@ -75,9 +75,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
     } finally {
       setLoadingLoss(null);
     }
-  }, []);
+  }
 
-  const undoWin = useCallback(async (id: number) => {
+  async function undoWin(id: number) {
     setLoadingUndoWin(id);
     try {
       const res = await fetch(`/api/killers/${id}/win/undo`, { method: "PATCH" });
@@ -91,9 +91,9 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
     } finally {
       setLoadingUndoWin(null);
     }
-  }, []);
+  }
 
-  const undoLoss = useCallback(async (id: number) => {
+  async function undoLoss(id: number) {
     setLoadingUndoLoss(id);
     try {
       const res = await fetch(`/api/killers/${id}/loss/undo`, { method: "PATCH" });
@@ -107,7 +107,7 @@ export function useKillers(initialKillers: Killer[]): UseKillersReturn {
     } finally {
       setLoadingUndoLoss(null);
     }
-  }, []);
+  }
 
   return {
     killers,

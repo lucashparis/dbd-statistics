@@ -11,7 +11,7 @@ export function useHistory(isActive: boolean) {
   const [loadingMore, setLoadingMore] = React.useState(false);
   const initializedRef = React.useRef(false);
 
-  const fetchPage = React.useCallback(async (pageNum: number, append: boolean) => {
+  async function fetchPage(pageNum: number, append: boolean) {
     if (!append) setLoading(true);
     if (append) setLoadingMore(true);
 
@@ -24,7 +24,7 @@ export function useHistory(isActive: boolean) {
       if (!append) setLoading(false);
       if (append) setLoadingMore(false);
     }
-  }, []);
+  }
 
   React.useEffect(() => {
     if (!isActive) return;
@@ -35,13 +35,13 @@ export function useHistory(isActive: boolean) {
     }
     setPage(1);
     fetchPage(1, false);
-  }, [isActive, fetchPage]);
+  }, [isActive]);
 
-  const loadMore = React.useCallback(() => {
+  function loadMore() {
     const next = page + 1;
     setPage(next);
     fetchPage(next, true);
-  }, [page, fetchPage]);
+  }
 
   return { matches, hasMore, loading, loadingMore, loadMore };
 }

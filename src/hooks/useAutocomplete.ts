@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { KillerStats } from "@/types/killer";
 
 interface UseAutocompleteReturn {
@@ -29,51 +29,48 @@ export function useAutocomplete(killers: KillerStats[]): UseAutocompleteReturn {
       )
     : [];
 
-  const setQuery = useCallback((q: string) => {
+  function setQuery(q: string) {
     setQueryRaw(q);
     setSelected(null);
     setIsOpen(q.trim().length > 0);
     setHighlightedIndex(-1);
-  }, []);
+  }
 
-  const selectKiller = useCallback((killer: KillerStats) => {
+  function selectKiller(killer: KillerStats) {
     setSelected(killer);
     setQueryRaw(killer.name);
     setIsOpen(false);
     setHighlightedIndex(-1);
-  }, []);
+  }
 
-  const clearSelection = useCallback(() => {
+  function clearSelection() {
     setSelected(null);
     setQueryRaw("");
     setIsOpen(false);
     setHighlightedIndex(-1);
-  }, []);
+  }
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!isOpen) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setHighlightedIndex((i) => Math.min(i + 1, suggestions.length - 1));
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setHighlightedIndex((i) => Math.max(i - 1, 0));
-        return;
-      }
-      if (e.key === "Enter" && highlightedIndex >= 0) {
-        e.preventDefault();
-        selectKiller(suggestions[highlightedIndex]);
-        return;
-      }
-      if (e.key === "Escape") {
-        setIsOpen(false);
-      }
-    },
-    [isOpen, suggestions, highlightedIndex, selectKiller]
-  );
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!isOpen) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((i) => Math.min(i + 1, suggestions.length - 1));
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((i) => Math.max(i - 1, 0));
+      return;
+    }
+    if (e.key === "Enter" && highlightedIndex >= 0) {
+      e.preventDefault();
+      selectKiller(suggestions[highlightedIndex]);
+      return;
+    }
+    if (e.key === "Escape") {
+      setIsOpen(false);
+    }
+  }
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {

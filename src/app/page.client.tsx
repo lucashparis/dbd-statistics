@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/templates/AppShell";
 import { KillersTabTemplate } from "@/components/templates/KillersTabTemplate";
 import { StatisticsTabTemplate } from "@/components/templates/StatisticsTabTemplate";
@@ -28,13 +28,13 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
     undoLoss,
   } = useKillers(initialKillers);
 
-  const [activeTab, setActiveTab] = React.useState<TabId>("killers");
-  const [statsNav, setStatsNav] = React.useState<{ killer: KillerStats; nonce: number } | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>("killers");
+  const [statsNav, setStatsNav] = useState<{ killer: KillerStats; nonce: number } | null>(null);
 
-  const navigateToStats = React.useCallback((killer: KillerStats) => {
+  function navigateToStats(killer: KillerStats) {
     setStatsNav({ killer, nonce: Date.now() });
     setActiveTab("statistics");
-  }, []);
+  }
 
   return (
     <AppShell

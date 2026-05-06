@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Swords, Skull, Activity, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KillersPieChart } from "@/components/organisms/KillersPieChart";
@@ -34,14 +33,12 @@ StatisticsOverview.Skeleton = function StatisticsOverviewSkeleton({ className }:
 };
 
 export function StatisticsOverview({ killers, selectedKiller, className }: StatisticsOverviewProps) {
-  const totals = React.useMemo(() => {
-    const target = selectedKiller ? [selectedKiller] : killers;
-    const wins = target.reduce((s, k) => s + k.wins, 0);
-    const losses = target.reduce((s, k) => s + k.losses, 0);
-    const total = wins + losses;
-    const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
-    return { wins, losses, total, winRate };
-  }, [killers, selectedKiller]);
+  const target = selectedKiller ? [selectedKiller] : killers;
+  const wins = target.reduce((s, k) => s + k.wins, 0);
+  const losses = target.reduce((s, k) => s + k.losses, 0);
+  const total = wins + losses;
+  const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
+  const totals = { wins, losses, total, winRate };
 
   return (
     <div className={cn("space-y-6", className)}>

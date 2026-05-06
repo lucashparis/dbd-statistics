@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   PieChart,
   Pie,
@@ -25,25 +24,21 @@ const BLOOD_PALETTE = [
 ];
 
 export function KillersPieChart({ killers, mode, selectedKiller }: KillersPieChartProps) {
-  const data = React.useMemo(() => {
-    if (mode === "winloss" && selectedKiller) {
-      return [
+  const data = mode === "winloss" && selectedKiller
+    ? [
         { name: "Wins", value: selectedKiller.wins, imageUrl: selectedKiller.imageUrl, total: selectedKiller.wins },
         { name: "Losses", value: selectedKiller.losses, imageUrl: selectedKiller.imageUrl, total: selectedKiller.losses },
-      ];
-    }
-
-    return killers
-      .filter((k) => k.total > 0)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 15)
-      .map((k) => ({
-        name: k.name,
-        value: k.total,
-        imageUrl: k.imageUrl,
-        total: k.total,
-      }));
-  }, [killers, mode, selectedKiller]);
+      ]
+    : killers
+        .filter((k) => k.total > 0)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 15)
+        .map((k) => ({
+          name: k.name,
+          value: k.total,
+          imageUrl: k.imageUrl,
+          total: k.total,
+        }));
 
   const colors = mode === "winloss"
     ? ["#10B981", "#DC143C"]
