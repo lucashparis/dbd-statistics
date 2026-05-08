@@ -192,3 +192,5 @@ All user-facing text must be in **English** — labels, headings, descriptions, 
 - **Do not** add Tailwind config files — all customization goes in `globals.css`.
 - **Do not** use raw color values in components — use the CSS variable tokens.
 - Keep API route handlers thin; business logic belongs in hooks or utility functions.
+- **React Compiler is enabled** (`reactCompiler: true` in `next.config.ts`) — do not use `useCallback`, `useMemo`, or `memo` manually; the compiler handles all memoization automatically. Write plain functions and values.
+- **React 19 ref callbacks** — prefer ref callbacks with cleanup return over `useEffect` + `useRef` for DOM side-effects (e.g., ResizeObserver, event listeners). Write as a plain function — no `useCallback` wrapper needed. Do not use `useEffect` for DOM measurements or subscriptions that can attach directly to an element.

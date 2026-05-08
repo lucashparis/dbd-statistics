@@ -1,11 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import {
   PieChart,
   Pie,
   Cell,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import { ChartTooltip } from "@/components/molecules/ChartTooltip";
@@ -24,6 +24,18 @@ const BLOOD_PALETTE = [
 ];
 
 export function KillersPieChart({ killers, mode, selectedKiller }: KillersPieChartProps) {
+  const [containerWidth, setContainerWidth] = useState(600);
+
+  const containerRef = (node: HTMLDivElement | null) => {
+    if (!node) return;
+    const ro = new ResizeObserver(([entry]) => setContainerWidth(entry.contentRect.width));
+    ro.observe(node);
+    return () => ro.disconnect();
+  };
+
+  const outerRadius = Math.min(120, Math.floor(containerWidth * 0.38));
+  const innerRadius = Math.min(70, Math.floor(containerWidth * 0.23));
+
   const data = mode === "winloss" && selectedKiller
     ? [
         { name: "Wins", value: selectedKiller.wins, imageUrl: selectedKiller.imageUrl, total: selectedKiller.wins },
@@ -44,7 +56,7 @@ export function KillersPieChart({ killers, mode, selectedKiller }: KillersPieCha
     ? ["#10B981", "#DC143C"]
     : BLOOD_PALETTE;
 
-  if (data.length === 0) {
+  if (data.length === 0 || data.every((d) => d.value === 0)) {
     return (
       <div className="flex h-72 items-center justify-center text-sm text-muted">
         No match data yet. Register some wins or losses to see stats.
@@ -53,34 +65,42 @@ export function KillersPieChart({ killers, mode, selectedKiller }: KillersPieCha
   }
 
   return (
-    <ResponsiveContainer width="100%" height={340}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          innerRadius={70}
-          outerRadius={120}
-          paddingAngle={2}
-          dataKey="value"
-          stroke="none"
-        >
-          {data.map((_, index) => (
-            <Cell
-              key={index}
-              fill={colors[index % colors.length]}
-              opacity={0.9}
+    <div ref={containerRef}>
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={innerRadius}
+            outerRadius={outerRadius}
+            paddingAngle={2}
+            dataKey="value"
+            stroke="none"
+          >
+            {data.map((_, index) => (
+              <Cell
+                key={index}
+                fill={colors[index % colors.length]}
+                opacity={0.9}
+              />
+            ))}
+          </Pie>
+          <Tooltip content={<ChartTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+
+      <ul className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 pt-4">
+        {data.map((entry, index) => (
+          <li key={entry.name} className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: colors[index % colors.length] }}
             />
-          ))}
-        </Pie>
-        <Tooltip content={<ChartTooltip />} />
-        <Legend
-          formatter={(value) => (
-            <span style={{ color: "#9ca3af", fontSize: "11px" }}>{value}</span>
-          )}
-          wrapperStyle={{ paddingTop: "16px" }}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+            <span style={{ color: "#9ca3af", fontSize: "11px" }}>{entry.name}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
