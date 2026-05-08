@@ -23,13 +23,14 @@ export function TabNav({ tabs, activeTab, onTabChange, className }: TabNavProps)
     <nav
       role="tablist"
       aria-label="Main navigation"
-      className={cn("flex gap-1 border-b border-subtle", className)}
+      className={cn("flex gap-1 border-b border-subtle overflow-x-auto scrollbar-dark", className)}
     >
       {tabs.map((tab) => (
         <TabButton
           key={tab.id}
           active={activeTab === tab.id}
           onClick={() => onTabChange(tab.id)}
+          className="shrink-0 whitespace-nowrap"
         >
           {tab.label}
         </TabButton>

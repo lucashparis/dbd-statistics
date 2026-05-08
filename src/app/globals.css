@@ -140,6 +140,7 @@
 
   .scrollbar-dark::-webkit-scrollbar {
     width: 4px;
+    height: 4px;
   }
 
   .scrollbar-dark::-webkit-scrollbar-track {
