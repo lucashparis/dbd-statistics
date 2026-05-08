@@ -13,7 +13,6 @@ export interface PlayerRole {
 export interface TeamPlayer {
   name: string;
   nick: string;
-  imageUrl: string;
   killer: PlayerRole;
   survivor: PlayerRole;
 }
@@ -33,7 +32,7 @@ export function PlayerCard({ player, index }: PlayerCardProps) {
       style={{ animationDelay: `${index * 130}ms` }}
     >
       <div className="flex flex-col items-center pt-8 pb-5 px-6">
-        <Avatar src={player.imageUrl} alt={player.name} />
+        <Avatar name={player.name} />
         <p className="text-blood font-display text-xs tracking-[0.25em] uppercase mt-5 mb-1">
           {player.nick}
         </p>
@@ -48,25 +47,12 @@ export function PlayerCard({ player, index }: PlayerCardProps) {
   );
 }
 
-function Avatar({ src, alt }: { src: string; alt: string }) {
-  const [error, setError] = React.useState(false);
-
+function Avatar({ name }: { name: string }) {
   return (
     <div className="player-avatar-ring w-24 h-24 rounded-full overflow-hidden shrink-0">
-      {error ? (
-        <div className="w-full h-full bg-surface-2 flex items-center justify-center">
-          <span className="font-display text-blood text-3xl">{alt[0]}</span>
-        </div>
-      ) : (
-        <Image
-          src={src}
-          alt={alt}
-          width={96}
-          height={96}
-          className="object-cover w-full h-full"
-          onError={() => setError(true)}
-        />
-      )}
+      <div className="w-full h-full bg-surface-2 flex items-center justify-center">
+        <span className="font-display text-blood text-3xl">{name[0]}</span>
+      </div>
     </div>
   );
 }

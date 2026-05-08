@@ -5,7 +5,6 @@ const TEAM_PLAYERS: TeamPlayer[] = [
   {
     name: "Lucas Paris",
     nick: "OldDeadMemories",
-    imageUrl: "/images/surv/lucas.webp",
     killer: {
       name: "Kaneki",
       imageUrl: "/images/killers/kaneki.webp",
@@ -19,7 +18,6 @@ const TEAM_PLAYERS: TeamPlayer[] = [
   {
     name: "Fran Coelho",
     nick: "Francyx",
-    imageUrl: "/images/surv/francyx.webp",
     killer: {
       name: "Spirit",
       imageUrl: "/images/killers/spirit.webp",
@@ -33,7 +31,6 @@ const TEAM_PLAYERS: TeamPlayer[] = [
   {
     name: "Gabriel Zubioli",
     nick: "Zubioli",
-    imageUrl: "/images/surv/gabriel.webp",
     killer: {
       name: "Spectro",
       imageUrl: "/images/killers/wraith.webp",
@@ -46,7 +43,6 @@ const TEAM_PLAYERS: TeamPlayer[] = [
   {
     name: "Breno Antonuci",
     nick: "BreNaN",
-    imageUrl: "/images/surv/brenan.webp",
     killer: {
       name: "Trickster",
       imageUrl: "/images/killers/trickster.webp",
@@ -60,7 +56,6 @@ const TEAM_PLAYERS: TeamPlayer[] = [
   {
     name: "Alison Gomes",
     nick: "menob7",
-    imageUrl: "/images/surv/menob7.webp",
     killer: {
       name: "Vecna",
       imageUrl: "/images/killers/vecna.webp",
