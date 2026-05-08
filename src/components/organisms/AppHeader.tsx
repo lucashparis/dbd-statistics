@@ -14,7 +14,7 @@ export function AppHeader() {
               className="text-xl font-bold uppercase tracking-[0.15em] text-white"
               style={{ fontFamily: "var(--font-cinzel), serif" }}
             >
-              DBD Killer Tracker
+              DBD Killer
             </h1>
             <p className="text-[10px] uppercase tracking-widest text-muted">
               Dead by Daylight · Statistics
