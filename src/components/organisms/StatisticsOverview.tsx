@@ -3,12 +3,14 @@
 import { Swords, Skull, Activity, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KillersPieChart } from "@/components/organisms/KillersPieChart";
+import { KillerRankingList } from "@/components/organisms/KillerRankingList";
 import { StatItem } from "@/components/molecules/StatItem";
 import type { KillerStats } from "@/types/killer";
 
 interface StatisticsOverviewProps {
   killers: KillerStats[];
   selectedKiller: KillerStats | null;
+  onNavigateToStats?: (killer: KillerStats) => void;
   className?: string;
 }
 
@@ -32,7 +34,7 @@ StatisticsOverview.Skeleton = function StatisticsOverviewSkeleton({ className }:
   );
 };
 
-export function StatisticsOverview({ killers, selectedKiller, className }: StatisticsOverviewProps) {
+export function StatisticsOverview({ killers, selectedKiller, onNavigateToStats, className }: StatisticsOverviewProps) {
   const target = selectedKiller ? [selectedKiller] : killers;
   const wins = target.reduce((s, k) => s + k.wins, 0);
   const losses = target.reduce((s, k) => s + k.losses, 0);
@@ -65,6 +67,15 @@ export function StatisticsOverview({ killers, selectedKiller, className }: Stati
           selectedKiller={selectedKiller}
         />
       </div>
+
+      {!selectedKiller && (
+        <div className="card-dark p-4">
+          <h3 className="mb-4 text-xs uppercase tracking-widest text-muted">
+            Top Killers Ranking
+          </h3>
+          <KillerRankingList killers={killers} onKillerClick={onNavigateToStats} />
+        </div>
+      )}
     </div>
   );
 }

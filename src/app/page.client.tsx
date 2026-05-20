@@ -55,7 +55,7 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
           onNavigateToStats={navigateToStats}
         />
       }
-      statisticsContent={<StatisticsTabTemplate killers={killers} isLoading={isLoading} statsNav={statsNav} />}
+      statisticsContent={<StatisticsTabTemplate killers={killers} isLoading={isLoading} statsNav={statsNav} onNavigateToStats={navigateToStats} />}
       teamContent={<TeamTabTemplate />}
       historyContent={<HistoryTabTemplate isActive={activeTab === "history"} />}
     />

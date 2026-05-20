@@ -11,9 +11,10 @@ interface StatisticsTabTemplateProps {
   killers: KillerStats[];
   isLoading?: boolean;
   statsNav?: { killer: KillerStats; nonce: number } | null;
+  onNavigateToStats?: (killer: KillerStats) => void;
 }
 
-export function StatisticsTabTemplate({ killers, isLoading, statsNav }: StatisticsTabTemplateProps) {
+export function StatisticsTabTemplate({ killers, isLoading, statsNav, onNavigateToStats }: StatisticsTabTemplateProps) {
   const autocomplete = useAutocomplete(killers);
 
   React.useEffect(() => {
@@ -48,6 +49,7 @@ export function StatisticsTabTemplate({ killers, isLoading, statsNav }: Statisti
       <StatisticsOverview
         killers={killers}
         selectedKiller={autocomplete.selected}
+        onNavigateToStats={onNavigateToStats}
       />
     </div>
   );
