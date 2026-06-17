@@ -23,9 +23,8 @@ const TEAM_PLAYERS: TeamPlayer[] = [
       imageUrl: "/images/killers/spirit.webp",
     },
     survivor: {
-      name: "Feng Min",
+      name: "Michonne",
       imageUrl: "/images/surv/fran.webp",
-      skin: "Arcade Tournament",
     },
   },
   {

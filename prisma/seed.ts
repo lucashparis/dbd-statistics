@@ -303,6 +303,12 @@ const killers = [
     wins: 5,
     losses: 3,
   },
+  {
+    name: "Jason",
+    imageUrl: "/images/killers/jason.webp",
+    wins: 0,
+    losses: 0,
+  },
 ];
 
 async function main() {
