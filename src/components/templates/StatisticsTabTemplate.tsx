@@ -5,6 +5,7 @@ import { KillerAutocomplete } from "@/components/organisms/KillerAutocomplete";
 import { KillerDetailPanel } from "@/components/organisms/KillerDetailPanel";
 import { StatisticsOverview } from "@/components/organisms/StatisticsOverview";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
+import { useStreaks } from "@/hooks/useStreaks";
 import type { KillerStats } from "@/types/killer";
 
 interface StatisticsTabTemplateProps {
@@ -16,6 +17,9 @@ interface StatisticsTabTemplateProps {
 
 export function StatisticsTabTemplate({ killers, isLoading, statsNav, onNavigateToStats }: StatisticsTabTemplateProps) {
   const autocomplete = useAutocomplete(killers);
+  const totalMatches = killers.reduce((sum, k) => sum + k.total, 0);
+  const { streaks } = useStreaks(totalMatches);
+  const selectedStreaks = autocomplete.selected ? streaks.perKiller[autocomplete.selected.id] : undefined;
 
   React.useEffect(() => {
     if (statsNav) {
@@ -43,12 +47,17 @@ export function StatisticsTabTemplate({ killers, isLoading, statsNav, onNavigate
       />
 
       {autocomplete.selected && (
-        <KillerDetailPanel killer={autocomplete.selected} />
+        <KillerDetailPanel
+          killer={autocomplete.selected}
+          longestWinStreak={selectedStreaks?.longestWin ?? 0}
+          longestLossStreak={selectedStreaks?.longestLoss ?? 0}
+        />
       )}
 
       <StatisticsOverview
         killers={killers}
         selectedKiller={autocomplete.selected}
+        streaks={streaks}
         onNavigateToStats={onNavigateToStats}
       />
     </div>

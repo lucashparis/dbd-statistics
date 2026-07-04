@@ -1,10 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { StatisticsOverview } from "@/components/organisms/StatisticsOverview";
-import type { KillerStats } from "@/types/killer";
+import type { KillerStats, StreaksData } from "@/types/killer";
 
 vi.mock("@/components/organisms/KillersPieChart", () => ({
   KillersPieChart: () => <div data-testid="pie-chart" />,
+}));
+
+vi.mock("@/components/organisms/KillerRankingList", () => ({
+  KillerRankingList: () => <div data-testid="ranking-list" />,
 }));
 
 function makeKiller(
@@ -32,6 +36,11 @@ const killers: KillerStats[] = [
   makeKiller(1, "Trapper", 6, 4),
   makeKiller(2, "Wraith", 3, 7),
 ];
+
+const streaks: StreaksData = {
+  global: { longestWin: 5, longestLoss: 3 },
+  perKiller: { 1: { longestWin: 8, longestLoss: 2 } },
+};
 
 describe("StatisticsOverview", () => {
   it("renders the pie chart", () => {
@@ -68,5 +77,28 @@ describe("StatisticsOverview", () => {
     expect(screen.getByText("Total Losses")).toBeInTheDocument();
     expect(screen.getByText("Total Matches")).toBeInTheDocument();
     expect(screen.getByText("Win Rate")).toBeInTheDocument();
+  });
+
+  it("renders the streak cards", () => {
+    render(<StatisticsOverview killers={killers} selectedKiller={null} />);
+    expect(screen.getByText("Best Win Streak")).toBeInTheDocument();
+    expect(screen.getByText("Worst Loss Streak")).toBeInTheDocument();
+  });
+
+  it("displays the global streaks when no killer is selected", () => {
+    render(<StatisticsOverview killers={killers} selectedKiller={null} streaks={streaks} />);
+    expect(screen.getByText("5")).toBeInTheDocument(); // global longest win
+    expect(screen.getByText("3")).toBeInTheDocument(); // global longest loss
+  });
+
+  it("displays the selected killer streaks", () => {
+    render(<StatisticsOverview killers={killers} selectedKiller={killers[0]} streaks={streaks} />);
+    expect(screen.getByText("8")).toBeInTheDocument(); // Trapper longest win
+    expect(screen.getByText("2")).toBeInTheDocument(); // Trapper longest loss
+  });
+
+  it("defaults streaks to zero when no streak data is provided", () => {
+    render(<StatisticsOverview killers={killers} selectedKiller={null} />);
+    expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(2);
   });
 });

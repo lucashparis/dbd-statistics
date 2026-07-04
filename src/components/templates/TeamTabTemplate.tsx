@@ -19,8 +19,8 @@ const TEAM_PLAYERS: TeamPlayer[] = [
     name: "Fran Coelho",
     nick: "Francyx",
     killer: {
-      name: "Spirit",
-      imageUrl: "/images/killers/spirit.webp",
+      name: "Sadako",
+      imageUrl: "/images/killers/onryo.webp",
     },
     survivor: {
       name: "Michonne",
@@ -43,8 +43,8 @@ const TEAM_PLAYERS: TeamPlayer[] = [
     name: "Breno Antonuci",
     nick: "BreNaN",
     killer: {
-      name: "Trickster",
-      imageUrl: "/images/killers/trickster.webp",
+      name: "Drácula",
+      imageUrl: "/images/killers/dark-lord.webp",
     },
     survivor: {
       name: "Sable Ward",
@@ -60,9 +60,22 @@ const TEAM_PLAYERS: TeamPlayer[] = [
       imageUrl: "/images/killers/vecna.webp",
     },
     survivor: {
-      name: "Mikaela Reid",
-      skin: "Sessão de Banho de Sol",
-      imageUrl: "/images/surv/alisson.webp",
+      name: "Ace Visconti",
+      skin: "",
+      imageUrl: "",
+    },
+  },
+  {
+    name: "Jean Claus",
+    nick: "KLAUSjKLAUS",
+    killer: {
+      name: "Spirit",
+      imageUrl: "/images/killers/spirit.webp",
+    },
+    survivor: {
+      name: "Cheryl Mason",
+      skin: "Hinako",
+      imageUrl: "",
     },
   },
 ];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeStats, formatPercent } from "@/lib/utils";
+import { computeStats, computeStreaks, formatPercent } from "@/lib/utils";
 import type { Killer } from "@/types/killer";
 
 const base: Killer = {
@@ -29,6 +29,37 @@ describe("computeStats", () => {
     const stats = computeStats({ ...base, wins: 5, losses: 0 });
     expect(stats.total).toBe(5);
     expect(stats.winRate).toBe(100);
+  });
+});
+
+describe("computeStreaks", () => {
+  it("returns zero streaks for an empty history", () => {
+    expect(computeStreaks([])).toEqual({ longestWin: 0, longestLoss: 0 });
+  });
+
+  it("finds the longest win streak", () => {
+    const results = ["win", "win", "loss", "win", "win", "win", "loss"] as const;
+    expect(computeStreaks([...results]).longestWin).toBe(3);
+  });
+
+  it("finds the longest loss streak", () => {
+    const results = ["loss", "win", "loss", "loss", "loss", "win"] as const;
+    expect(computeStreaks([...results]).longestLoss).toBe(3);
+  });
+
+  it("resets the current streak when the result flips", () => {
+    const results = ["win", "loss", "win", "loss"] as const;
+    expect(computeStreaks([...results])).toEqual({ longestWin: 1, longestLoss: 1 });
+  });
+
+  it("counts a streak that runs to the end of the history", () => {
+    const results = ["loss", "win", "win", "win"] as const;
+    expect(computeStreaks([...results])).toEqual({ longestWin: 3, longestLoss: 1 });
+  });
+
+  it("handles an all-wins history", () => {
+    const results = ["win", "win", "win", "win"] as const;
+    expect(computeStreaks([...results])).toEqual({ longestWin: 4, longestLoss: 0 });
   });
 });
 

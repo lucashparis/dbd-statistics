@@ -36,3 +36,13 @@ export interface HistoryPage {
   total: number;
   hasMore: boolean;
 }
+
+export interface Streaks {
+  longestWin: number;
+  longestLoss: number;
+}
+
+export interface StreaksData {
+  global: Streaks;
+  perKiller: Record<number, Streaks>;
+}

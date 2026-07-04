@@ -1,15 +1,16 @@
 "use client";
 
-import { Swords, Skull, Activity, TrendingUp } from "lucide-react";
+import { Swords, Skull, Activity, TrendingUp, Flame, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KillersPieChart } from "@/components/organisms/KillersPieChart";
 import { KillerRankingList } from "@/components/organisms/KillerRankingList";
 import { StatItem } from "@/components/molecules/StatItem";
-import type { KillerStats } from "@/types/killer";
+import type { KillerStats, StreaksData } from "@/types/killer";
 
 interface StatisticsOverviewProps {
   killers: KillerStats[];
   selectedKiller: KillerStats | null;
+  streaks?: StreaksData;
   onNavigateToStats?: (killer: KillerStats) => void;
   className?: string;
 }
@@ -17,8 +18,8 @@ interface StatisticsOverviewProps {
 StatisticsOverview.Skeleton = function StatisticsOverviewSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn("space-y-6", className)}>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="card-dark p-4 flex flex-col items-center gap-2 animate-pulse">
             <div className="h-5 w-5 rounded bg-surface-3" />
             <div className="h-6 w-12 rounded bg-surface-3" />
@@ -34,7 +35,7 @@ StatisticsOverview.Skeleton = function StatisticsOverviewSkeleton({ className }:
   );
 };
 
-export function StatisticsOverview({ killers, selectedKiller, onNavigateToStats, className }: StatisticsOverviewProps) {
+export function StatisticsOverview({ killers, selectedKiller, streaks, onNavigateToStats, className }: StatisticsOverviewProps) {
   const target = selectedKiller ? [selectedKiller] : killers;
   const wins = target.reduce((s, k) => s + k.wins, 0);
   const losses = target.reduce((s, k) => s + k.losses, 0);
@@ -42,15 +43,21 @@ export function StatisticsOverview({ killers, selectedKiller, onNavigateToStats,
   const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
   const totals = { wins, losses, total, winRate };
 
+  const streakSource = selectedKiller ? streaks?.perKiller[selectedKiller.id] : streaks?.global;
+  const longestWinStreak = streakSource?.longestWin ?? 0;
+  const longestLossStreak = streakSource?.longestLoss ?? 0;
+
   return (
     <div className={cn("space-y-6", className)}>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
-          { icon: Swords, value: totals.wins, label: "Total Wins", color: "text-emerald-400" },
-          { icon: Skull, value: totals.losses, label: "Total Losses", color: "text-blood" },
-          { icon: Activity, value: totals.total, label: "Total Matches", color: "text-white" },
-          { icon: TrendingUp, value: `${totals.winRate}%`, label: "Win Rate", color: totals.winRate >= 60 ? "text-emerald-400" : "text-blood" },
-        ].map(({ icon, value, label, color }) => (
+          { icon: Swords, value: totals.wins, label: "Total Wins" },
+          { icon: Skull, value: totals.losses, label: "Total Losses" },
+          { icon: Activity, value: totals.total, label: "Total Matches" },
+          { icon: TrendingUp, value: `${totals.winRate}%`, label: "Win Rate" },
+          { icon: Flame, value: longestWinStreak, label: "Best Win Streak" },
+          { icon: TrendingDown, value: longestLossStreak, label: "Worst Loss Streak" },
+        ].map(({ icon, value, label }) => (
           <div key={label} className="card-dark p-4 flex flex-col items-center gap-1">
             <StatItem icon={icon} value={value} label={label} />
           </div>
