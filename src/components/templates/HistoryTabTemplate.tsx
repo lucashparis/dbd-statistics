@@ -9,7 +9,8 @@ interface HistoryTabTemplateProps {
 }
 
 export function HistoryTabTemplate({ isActive }: HistoryTabTemplateProps) {
-  const { matches, hasMore, loading, loadingMore, loadMore } = useHistory(isActive);
+  const { matches, hasMore, loading, loadingMore, error, loadMore, retry } =
+    useHistory(isActive);
 
   return (
     <div className="space-y-6">
@@ -30,7 +31,9 @@ export function HistoryTabTemplate({ isActive }: HistoryTabTemplateProps) {
         hasMore={hasMore}
         loading={loading}
         loadingMore={loadingMore}
+        error={error}
         onLoadMore={loadMore}
+        onRetry={retry}
       />
     </div>
   );

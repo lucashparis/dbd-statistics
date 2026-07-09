@@ -13,29 +13,29 @@ export async function PATCH(
   }
 
   try {
-    const current = await prisma.killer.findUnique({ where: { id: killerId } });
-    if (!current) {
-      return NextResponse.json({ error: "Killer not found" }, { status: 404 });
-    }
-    if (current.wins === 0) {
-      return NextResponse.json(current);
-    }
+    const killer = await prisma.$transaction(async (tx) => {
+      const current = await tx.killer.findUnique({ where: { id: killerId } });
+      if (!current) return null;
+      if (current.wins === 0) return current;
 
-    const [killer] = await Promise.all([
-      prisma.killer.update({
+      const lastWin = await tx.match.findFirst({
+        where: { killerId, result: "win" },
+        orderBy: { createdAt: "desc" },
+      });
+      if (lastWin) await tx.match.delete({ where: { id: lastWin.id } });
+
+      return tx.killer.update({
         where: { id: killerId },
         data: { wins: { decrement: 1 } },
-      }),
-      prisma.match
-        .findFirst({ where: { killerId, result: "win" }, orderBy: { createdAt: "desc" } })
-        .then((m) => (m ? prisma.match.delete({ where: { id: m.id } }) : null)),
-    ]);
+      });
+    });
 
+    if (!killer) {
+      return NextResponse.json({ error: "Killer not found" }, { status: 404 });
+    }
     return NextResponse.json(killer);
-  } catch {
-    return NextResponse.json(
-      { error: "Killer not found or update failed" },
-      { status: 404 }
-    );
+  } catch (e) {
+    console.error("win undo failed", e);
+    return NextResponse.json({ error: "Failed to undo win" }, { status: 500 });
   }
 }

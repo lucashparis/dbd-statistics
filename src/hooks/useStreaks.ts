@@ -17,9 +17,15 @@ export function useStreaks(signal: number) {
     setLoading(true);
 
     fetch("/api/stats/streaks")
-      .then((res) => res.json())
-      .then((data: StreaksData) => {
+      .then((res) => {
+        if (!res.ok) throw new Error(`Streaks request failed: ${res.status}`);
+        return res.json() as Promise<StreaksData>;
+      })
+      .then((data) => {
         if (!cancelled) setStreaks(data);
+      })
+      .catch(() => {
+        if (!cancelled) setStreaks(EMPTY);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

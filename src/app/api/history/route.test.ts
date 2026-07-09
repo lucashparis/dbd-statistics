@@ -11,7 +11,7 @@ vi.mock("@/lib/prisma", () => ({
 const matchFixture = {
   id: 1,
   killerId: 1,
-  result: "win",
+  result: "win" as const,
   createdAt: new Date(),
   killer: { id: 1, name: "Trapper", imageUrl: "" },
 };
@@ -21,6 +21,10 @@ function req(page?: number) {
     ? `http://localhost/api/history?page=${page}`
     : "http://localhost/api/history";
   return new Request(url);
+}
+
+function reqRaw(query: string) {
+  return new Request(`http://localhost/api/history?page=${query}`);
 }
 
 describe("GET /api/history", () => {
@@ -62,5 +66,26 @@ describe("GET /api/history", () => {
     const res = await GET(req(1));
     const body = await res.json();
     expect(body.hasMore).toBe(false);
+  });
+
+  it.each(["abc", "-3", "0", "", "NaN"])(
+    "falls back to page 1 (skip 0) for invalid page %j instead of crashing",
+    async (value) => {
+      vi.mocked(prisma.match.findMany).mockResolvedValueOnce([matchFixture]);
+      vi.mocked(prisma.match.count).mockResolvedValueOnce(1);
+      const res = await GET(reqRaw(value));
+      expect(res.status).toBe(200);
+      expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 0 })
+      );
+    }
+  );
+
+  it("returns 500 when the database query fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(prisma.match.findMany).mockRejectedValueOnce(new Error("db down"));
+    vi.mocked(prisma.match.count).mockResolvedValueOnce(0);
+    const res = await GET(req(1));
+    expect(res.status).toBe(500);
   });
 });
