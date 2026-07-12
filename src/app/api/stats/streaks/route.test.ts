@@ -13,20 +13,21 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 const SESSION: Session = { user: { id: "u1" }, expires: "2999-01-01T00:00:00.000Z" };
+const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>);
 
 let nextId = 1;
 function match(killerId: number, result: MatchResult) {
-  return { id: nextId++, killerId, result, createdAt: new Date() };
+  return { id: nextId++, userId: "u1", killerId, teamId: null, streakRunId: null, result, createdAt: new Date() };
 }
 
 describe("GET /api/stats/streaks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(auth).mockResolvedValue(SESSION);
+    authMock.mockResolvedValue(SESSION);
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValueOnce(null);
+    authMock.mockResolvedValueOnce(null);
     const res = await GET();
     expect(res.status).toBe(401);
   });

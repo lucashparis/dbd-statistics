@@ -3,9 +3,23 @@
 Guia de trabalho **ponto a ponto** derivado da auditoria técnica do repositório.
 Cada item é uma tarefa rastreável: vamos marcando `[x]` conforme resolvemos.
 
-> **Escopo real:** aplicação **única** Next.js 15/16 (App Router) — **não é monorepo**.
+> **Escopo real:** aplicação **única** Next.js 16 (App Router) — **não é monorepo**.
 > Itens de arquitetura de monorepo (workspaces, Turbo/Nx, deps entre packages) são **N/A**.
-> Stack verificada: `next@16.2.4`, `react@19`, TS `strict`, Prisma 5 + PostgreSQL, Vitest, Tailwind v4.
+> Stack verificada: `next@16.2.4`, `react@19.2`, TS `strict`, Prisma 5 + PostgreSQL, **NextAuth v5 (beta)**, `zod@4`, Vitest, Tailwind v4.
+
+---
+
+## 🔄 Revisão 2026-07-12 — o que mudou desde a auditoria original
+
+A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolveu vários itens **estruturalmente** (não pela correção pontual que a auditoria previa) e moveu referências de arquivo. Principais mudanças verificadas no código:
+
+- **Autenticação real (NextAuth v5)** — `src/auth.ts`, `src/auth.config.ts`, `src/proxy.ts` (o "middleware" do Next 16), páginas `/login` e `/signup`, rota `/api/signup`. **Toda** rota de dados agora chama `auth()` e devolve `401` sem sessão. → resolve **M1**.
+- **Modelo de dados multiusuário** — novos models `User`, `Player`, `Team`, `TeamPlayer`, `StreakRun`. `Match` ganhou `userId`, `teamId`, `streakRunId`. Dados agora são **por usuário**.
+- **Contadores denormalizados removidos** — `Killer` **não tem mais** `wins`/`losses`. Win/loss são **derivados** de `Match` via `groupBy`/`count` (`src/lib/killers.ts`). → resolve **M17**, torna **A1/M18** estruturalmente impossíveis.
+- **Novas features** — Players/Teams (roster), Streaks por killer e por time, histórico de partidas. Cada uma trouxe rotas + hooks + testes.
+- **Gate de qualidade** — `lint` corrigido (`eslint .`); **242 testes** passando (era 156). **Porém** `npx tsc --noEmit` **regrediu**: ~20 erros, todos em arquivos `.test.ts(x)` (ver **M19**).
+
+**Referências de arquivo que mudaram:** `page.tsx` (força-dinâmica) → `src/app/dashboard/page.tsx`; a lógica de win/loss saiu de `Killer.update({wins})` para `Match.create` + `getKillerForUser`.
 
 ---
 
@@ -14,23 +28,26 @@ Cada item é uma tarefa rastreável: vamos marcando `[x]` conforme resolvemos.
 1. Atacamos na ordem do **Roadmap** abaixo (fases por prioridade impacto ÷ esforço).
 2. Ao iniciar um item, mude o **Status** para `🟡 Em andamento`.
 3. Um item só vira `✅ Concluído` quando cumpre o **DoD** (Definition of Done), que inclui **teste co-locado** — regra obrigatória do `CLAUDE.md`.
-4. Antes de fechar cada item rode: `npm run test` e `npx tsc --noEmit` (e `eslint .` após corrigir M7).
+4. Antes de fechar cada item rode: `npm run test`, `npm run lint` e `npx tsc --noEmit`.
 5. Convenções do repo valem sempre: guard clauses, tokens de cor (sem hex cru), `@/*` nos imports, sem `useMemo`/`useCallback` (React Compiler), texto de UI em inglês.
 
-**Legenda de status:** ⬜ Pendente · 🟡 Em andamento · ✅ Concluído · ⏭️ Decisão adiada
+**Legenda de status:** ⬜ Pendente · 🟡 Em andamento / Parcial · ✅ Concluído · ⏭️ Decisão adiada
 
 ---
 
 ## 📊 Painel de progresso
 
-| Gravidade | Total | Concluídos |
-|-----------|-------|------------|
-| 🔴 ALTO   | 3     | ✅ 3       |
-| 🟠 MÉDIO  | 19    | 0          |
-| 🟢 BAIXO  | 13    | 0          |
-| **Total** | **35**| **3**      |
+| Gravidade | Total | ✅ Concluído | 🟡 Parcial | ⬜ Pendente |
+|-----------|-------|-------------|-----------|------------|
+| 🔴 ALTO   | 3     | 3           | 0         | 0          |
+| 🟠 MÉDIO  | 19    | 5           | 5         | 9          |
+| 🟢 BAIXO  | 13    | 2           | 5         | 6          |
+| **Total** | **35**| **10**      | **10**    | **15**     |
 
-> ✅ **Fase 0 concluída** — os 3 ALTO foram corrigidos (156 testes verdes + tsc limpo). Próximo: **Fase 1** (gate de qualidade — M7, M16).
+> ✅ **Fase 0 (ALTO) fechada.** ✅ **Fase 1 (gate) fechada:** `tsc` limpo (**M19**), CI criado (**M16**), deps ajustadas (**B5/B6**).
+> ✅ **M1 (auth) e M17/M18 (contadores) resolvidos pelo refactor.** Gate atual: `lint` ✅ · `test` ✅ (242) · `tsc --noEmit` ✅ (0 erros).
+> ⚠️ **Falta 1 passo manual no GitHub:** habilitar branch protection em `master` + marcar o job `verify` como *required check*. Como o deploy é automático no merge, sem isso o CI roda mas **não bloqueia** um merge vermelho.
+> Próximo foco sugerido: **M4/M5** (padronizar erros de API) e **M11** (streaks escalável).
 
 ---
 
@@ -38,297 +55,248 @@ Cada item é uma tarefa rastreável: vamos marcando `[x]` conforme resolvemos.
 
 | Fase | Foco | Itens | Esforço | Resultado |
 |------|------|-------|---------|-----------|
-| **0** | Quick wins — zerar ALTO | A1, A2, A3 | Baixo | Sem crashes / sem corrupção de dados |
-| **1** | Gate de qualidade | M7, M16, B5, B6 | Baixo | Lint + CI voltam a segurar regressões |
-| **2** | Robustez de API & dados | M4, M5, M6, M17, M18 | Médio | API previsível, contadores confiáveis |
-| **3** | Segurança / hardening | M1, M2, M3 | Médio | Mutações protegidas, headers/CSP |
-| **4** | Next.js & performance | M8, M9, M10, M11 | Médio | Boundaries, streaming, LCP, escala |
-| **5** | Acessibilidade (AA) | M12, M13, M14, M15, B8, B9 | Médio | WCAG AA no essencial |
-| **6** | Qualidade, testes & docs | M19, B1–B4, B7, B10–B13 | Médio | Dívida técnica + DoD do repo |
-| **—** | Decisões / INFO | I1, I6, I7 | — | Registrar escolha consciente |
+| **0** ✅ | Quick wins — zerar ALTO | A1, A2, A3 | Baixo | Sem crashes / sem corrupção de dados |
+| **1** ✅ | Reparar gate de qualidade | M19, M16, B5, B6 | Baixo | tsc/lint/test verdes; CI criado (falta só branch protection) |
+| **2** | Robustez de API & dados | M4, M5, M6, M11 | Médio | Erros consistentes, streaks escalável |
+| **3** | Segurança / hardening | M2, M3 | Médio | Rate limit + headers/CSP |
+| **4** | Next.js & performance | M8, M9, M10 | Médio | Boundaries, streaming, LCP |
+| **5** | Acessibilidade (AA) | M12, M13, M14, M15, B8, B9, B10 | Médio | WCAG AA no essencial |
+| **6** | Dívida técnica & docs | B1, B2, B3, B7, B11, B13 | Médio | Limpeza + docs alinhadas ao refactor |
+| **—** | Decisões / INFO | I4, I7 | — | Registrar escolha consciente |
 
 ---
 
 ## 🔴 ALTO
 
-### ⬜ A1 — Undo não é transacional (drift de dados)
-- **Arquivos:** `src/app/api/killers/[id]/win/undo/route.ts:24-32`, `src/app/api/killers/[id]/loss/undo/route.ts:24-32`
-- **Problema:** o undo usa `Promise.all([...])` para (1) decrementar o contador e (2) deletar a `Match` — duas escritas independentes. Falha parcial deixa `Killer.wins/losses` divergente das linhas `Match`. As rotas de win/loss já usam `$transaction` corretamente; o undo não.
-- **Correção:** usar transação interativa (resolve A1 e parte de M18):
-  ```ts
-  const killer = await prisma.$transaction(async (tx) => {
-    const current = await tx.killer.findUnique({ where: { id: killerId } });
-    if (!current) return null;
-    if (current.wins === 0) return current;
+### ✅ A1 — Undo não é transacional (drift de dados)
+- **Arquivos:** `src/app/api/killers/[id]/win/undo/route.ts`, `src/app/api/killers/[id]/loss/undo/route.ts`
+- **Problema (original):** o undo usava `Promise.all` para decrementar o contador e deletar a `Match` — duas escritas que podiam divergir.
+- **Resolução (verificada 2026-07-12):** **eliminado na raiz pelo refactor.** `Killer` não tem mais contadores; win/loss são derivados de `Match`. O undo hoje só faz `findFirst` (último match `teamId: null`) + `delete` de **uma** linha (operação atômica) e recomputa via `getKillerForUser`. Não há mais dupla-escrita para divergir. As rotas ainda filtram `teamId: null` (não desfazem partidas de streak) e tratam erro com `console.error` + `500`.
+- **Status:** ✅ Concluído — resolvido estruturalmente (ver **M17**). A trava de concorrência (**M18**) também deixou de existir por não haver contador.
 
-    const last = await tx.match.findFirst({
-      where: { killerId, result: "win" },
-      orderBy: { createdAt: "desc" },
-    });
-    if (last) await tx.match.delete({ where: { id: last.id } });
+### ✅ A2 — `?page=NaN` derruba `/api/history`
+- **Arquivo:** `src/app/api/history/route.ts:16-17`
+- **Resolução (verificada):** `const parsed = Number.parseInt(searchParams.get("page") ?? "1", 10); const page = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;` + corpo em `try/catch` com `console.error` e `500` controlado. Rota também passou a exigir sessão (`401`).
+- **Status:** ✅ Concluído — teste cobrindo `?page=abc/-3/0/""` → página 1 (200); erro de DB → 500.
 
-    return tx.killer.update({
-      where: { id: killerId },
-      data: { wins: { decrement: 1 } },
-    });
-  });
-  if (!killer) return NextResponse.json({ error: "Killer not found" }, { status: 404 });
-  return NextResponse.json(killer);
-  ```
-  (Espelhar para `loss/undo` trocando `wins`→`losses` e `result: "loss"`.)
-- **DoD:** ambas as rotas atômicas; teste que simula falha na deleção da `Match` e verifica que o contador **não** foi decrementado; `wins`/`losses` nunca ficam negativos.
-- **Status:** ✅ Concluído (2026-07-08) — transação interativa (`$transaction(async tx => …)`) nas 2 rotas; ordem `findFirst → delete → update`; +2 testes por rota (delete-antes-do-update; falha na deleção → sem decremento → 500). ⚠️ A trava de concorrência pura (contador negativo sob corrida) segue no **M18**.
-
-### ⬜ A2 — `?page=NaN` derruba `/api/history`
-- **Arquivo:** `src/app/api/history/route.ts:8-9`
-- **Problema:** `Math.max(1, parseInt("abc",10))` → `Math.max(1, NaN)` = **NaN** → `skip: NaN` → Prisma lança. Rota **sem try/catch** → 500 por input trivial de GET público.
-- **Correção:**
-  ```ts
-  const raw = Number.parseInt(searchParams.get("page") ?? "1", 10);
-  const page = Number.isFinite(raw) && raw > 0 ? raw : 1;
-  ```
-  Envolver o corpo em `try/catch` retornando 500 com log (ver M5).
-- **DoD:** teste cobrindo `?page=abc`, `?page=-3`, `?page=` e ausência do param → todos retornam página 1 válida (200), nunca 500.
-- **Status:** ✅ Concluído (2026-07-08) — `Number.isFinite(parsed) && parsed > 0 ? parsed : 1` + try/catch com log (500 controlado). Teste `it.each(["abc","-3","0","","NaN"])` → skip 0/200; + teste de falha de DB → 500.
-
-### ⬜ A3 — Camada de fetch do cliente ignora `res.ok` (crash de render)
-- **Arquivos:** `src/hooks/useHistory.ts:19-21`, `src/hooks/useStreaks.ts:19-22`
-- **Problema:** `res.json()` sem checar `res.ok`. Em 5xx, `data.matches` vira `undefined` → `setMatches(undefined)` → `.map` crasha. Sem `error.tsx` (M8) para conter → tela branca.
-- **Correção:** checar `res.ok` e lançar/tratar; garantir shape padrão:
-  ```ts
-  const res = await fetch(`/api/history?page=${pageNum}`);
-  if (!res.ok) throw new Error("Failed to load history");
-  const data: HistoryPage = await res.json();
-  ```
-  Adicionar estado de erro nos hooks (como em `useKillers`). Depende de **M8** para o boundary global.
-- **DoD:** teste com `fetch` mockado retornando 500 → hook expõe erro e **não** quebra o render; UI mostra estado de erro.
-- **Status:** ✅ Concluído (2026-07-08) — `useHistory` checa `res.ok`, expõe `error` + `retry`; `useStreaks` degrada para vazio (métrica secundária). `MatchHistoryList` ganhou estado de erro + "Try again" (com teste próprio, antes inexistente); `HistoryTabTemplate` ligado. ⚠️ Boundary global (`error.tsx`) segue no **M8** — aqui tratei inline.
+### ✅ A3 — Camada de fetch do cliente ignora `res.ok` (crash de render)
+- **Arquivos:** `src/hooks/useHistory.ts:21-22`, `src/hooks/useStreaks.ts:20-22`
+- **Resolução (verificada):** `useHistory` checa `res.ok`, expõe `error` + `retry` e reseta `matches`/`hasMore` no erro. `useStreaks` checa `res.ok` e degrada para `EMPTY` (métrica secundária).
+- **Status:** ✅ Concluído. ⚠️ Boundary global (`error.tsx`) segue no **M8** — aqui o tratamento é inline no hook.
 
 ---
 
 ## 🟠 MÉDIO
 
-### ⬜ M7 — `"lint": "next lint"` quebrado no Next 16
+### ✅ M1 — Sem authn/authz nas rotas (mutações públicas)
+- **Arquivos:** `src/auth.ts`, `src/auth.config.ts`, `src/proxy.ts`, todas as `route.ts` de `api/*`
+- **Resolução (verificada):** NextAuth v5 (credenciais + bcrypt). **Toda** rota de dados faz `const session = await auth(); if (!session?.user) return 401;`. `/dashboard` protegido pelo `proxy.ts` (redirect → `/login`). Dados escopados por `session.user.id`.
+- **Status:** ✅ Concluído.
+- ⚠️ *Superfície sensível (auth): setor regulado — decisão de nível de proteção/expiração de sessão fica com o produto; revisão humana em ponto regulatório.*
+
+### ⬜ M7 — `"lint": "next lint"` quebrado no Next 16 → **RESOLVIDO**
 - **Arquivo:** `package.json:9`
-- **Problema:** `next lint` foi **removido no Next 16** (confirmado na doc oficial) e `next build` não linta mais. `npm run lint` falha.
-- **Correção:** `"lint": "eslint ."` (o repo já tem `eslint.config.mjs`). Alternativa: codemod `npx @next/codemod@canary next-lint-to-eslint-cli .`.
-- **DoD:** `npm run lint` roda e passa; sem erros de config.
-- **Status:** ⬜ Pendente
+- **Resolução (verificada):** `"lint": "eslint ."`. `npm run lint` roda e passa: **0 erros, 5 warnings** (`<img>` em arquivos de teste — ver M10/M19).
+- **Status:** ✅ Concluído.
 
-### ⬜ M16 — Sem CI/CD
-- **Arquivo:** ausência de `.github/workflows/`
-- **Problema:** nada roda `tsc --noEmit`, `eslint`, `vitest`, `next build` automaticamente; sem branch protection. Com M7 quebrado e Next 16 não lintando no build, **nada** segura regressões.
-- **Correção:** workflow `ci.yml` (push/PR) rodando install → typecheck → lint → test → build. Habilitar branch protection em `master`.
-- **DoD:** workflow verde em um PR de teste; merge bloqueado se falhar.
-- **Status:** ⬜ Pendente
+### ✅ M17 — Contadores denormalizados podem divergir de `Match` (causa-raiz)
+- **Arquivos:** `prisma/schema.prisma:34-41`, `src/lib/killers.ts`
+- **Resolução (verificada):** adotada a **opção (a)** — fonte única. `Killer` perdeu `wins`/`losses`; agregados vêm de `Match` (`getKillersForUser` usa `groupBy`, `getKillerForUser` usa `count`). Grade, pizza, histórico e streaks agora leem a **mesma** verdade.
+- **Status:** ✅ Concluído. **ADR implícita:** registrar no `CLAUDE.md` (hoje ainda descreve o schema antigo — ver **B13**).
 
-### ⬜ M4 — Erro mapeado como 404 mascara 500 (e engole o erro)
-- **Arquivos:** `src/app/api/killers/[id]/win/route.ts:26-31`, `loss/route.ts`, ambos `undo`
-- **Problema:** `catch { return 404 }` transforma qualquer falha (ex.: queda de DB) em "Killer not found" e não loga nada.
-- **Correção:** distinguir Prisma `P2025` (→ 404) do restante (→ 500) e logar server-side:
-  ```ts
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
-      return NextResponse.json({ error: "Killer not found" }, { status: 404 });
-    }
-    console.error("win route failed", e);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
-  }
-  ```
-- **DoD:** teste: killer inexistente → 404; erro genérico de DB (mock) → 500. 
-- **Status:** ⬜ Pendente
+### ✅ M18 — TOCTOU / corrida no undo (contador pode ficar negativo)
+- **Arquivo:** `src/app/api/killers/[id]/win/undo/route.ts`
+- **Resolução (verificada):** **moot** — não há contador para ficar negativo. O undo deleta uma linha `Match`.
+- **Status:** ✅ Concluído (resolvido por **M17**). *Resíduo mínimo:* dois undos concorrentes podem competir pelo mesmo `lastWin` → o 2º `delete` lança `P2025` → `catch` → `500` (sem corrupção). Aceitável; endereçar só se virar ruído.
 
-### ⬜ M5 — `/api/history` e `/api/stats/streaks` sem try/catch
-- **Arquivos:** `src/app/api/history/route.ts`, `src/app/api/stats/streaks/route.ts`
-- **Problema:** inconsistente com as rotas de killers; erro de DB vira 500 não tratado, sem log.
-- **Correção:** padronizar try/catch + log + resposta 500 (mesmo padrão de M4).
-- **DoD:** teste de caminho de erro (mock Prisma lançando) → 500 controlado.
-- **Status:** ⬜ Pendente
+### 🟡 M4 — Erro mapeado como 404 mascara 500 (e engole o erro)
+- **Arquivos:** `src/app/api/killers/[id]/win/route.ts:27-32`, `loss/route.ts:27-32` **(ainda ruins)**; `win/undo` e `loss/undo` **(corrigidos)**.
+- **Situação (verificada):** as rotas de **undo** já distinguem erro (`console.error` + `500`) e devolvem `404` só quando o killer não existe. As rotas de **win/loss (create)** ainda fazem `catch { return 404 }` — engolem qualquer falha de DB como "Killer not found", sem log.
+- **Correção:** aplicar o mesmo padrão das rotas de undo nas rotas de win/loss: logar server-side e devolver `500` para erro genérico; `404` só para killer inexistente (FK/`P2025`).
+- **DoD:** killer inexistente → 404; erro genérico de DB (mock) → 500; ambos com teste.
+- **Status:** 🟡 Parcial — falta win/loss (create).
 
-### ⬜ M6 — Sem validação de schema (zod) nas bordas
-- **Arquivos:** rotas de API (params/query)
-- **Problema:** `id`/`page`/query validados de forma ad-hoc (raiz de A2).
-- **Correção:** introduzir `zod` para params e query; helper de parse que retorna 400 em input inválido. Consolida A2.
+### 🟡 M5 — Rotas sem try/catch
+- **Arquivos:** `src/app/api/history/route.ts` **(ok)**; `src/app/api/stats/streaks/route.ts` **(ainda sem try/catch)**.
+- **Situação (verificada):** `/api/history` já tem `try/catch` + log + `500`. `/api/stats/streaks` **não** — `findMany` + cômputo rodam sem proteção; erro de DB vira `500` não tratado e sem log. (Rotas de killers já têm try/catch.)
+- **Correção:** padronizar try/catch + `console.error` + `500` em `stats/streaks` (mesmo padrão de M4).
+- **DoD:** teste com Prisma lançando → `500` controlado.
+- **Status:** 🟡 Parcial — falta `stats/streaks`.
+
+### 🟡 M6 — Validação de schema (zod) nas bordas
+- **Arquivos:** rotas de API (params/query/body)
+- **Situação (verificada):** `zod@4.4.3` entrou como dependência e **já é usado** em `players`, `teams`, `streaks/matches`, `signup` e `auth.ts`. As rotas de **killers** (`win`/`loss`/`undo`) e **history** ainda validam ad-hoc (`isNaN`, `Number.parseInt`).
+- **Correção:** helper de parse com zod para `id`/`page`; retornar `400` em input inválido; aplicar nas rotas de killers/history.
 - **DoD:** schema por rota; teste de input inválido → 400.
-- **Status:** ⬜ Pendente
+- **Status:** 🟡 Parcial — adotado nas rotas novas; falta killers/history.
 
-### ⬜ M17 — Contadores denormalizados podem divergir de `Match` (causa-raiz)
-- **Arquivos:** `prisma/schema.prisma:15-35` + rotas de mutação
-- **Problema:** `Killer.wins/losses` duplicam a verdade que já está em `Match`. Grade/pizza leem os contadores; histórico/streaks leem `Match`. Drift (ver A1) → números inconsistentes na UI.
-- **Correção (escolher 1):**
-  - **(a)** Fonte única: derivar agregados de `Match` via `groupBy` e remover os contadores; ou
-  - **(b)** Manter contadores mas **toda** mutação em transação + script de reconciliação (`wins == count(Match win)`).
-- **DoD:** decisão registrada (ADR curta no topo do arquivo); teste garantindo consistência contador↔Match após win/loss/undo.
-- **Status:** ⬜ Pendente
-
-### ⬜ M18 — TOCTOU / corrida no undo (contador pode ficar negativo)
-- **Arquivo:** `src/app/api/killers/[id]/win/undo/route.ts:16-32`
-- **Problema:** `findUnique` (checa `>0`) e o decremento não são atômicos; 2 undos concorrentes podem passar a guarda e zerar/negativar.
-- **Correção:** dentro da transação de A1, usar decremento condicional:
-  ```ts
-  const updated = await tx.killer.updateMany({
-    where: { id: killerId, wins: { gt: 0 } },
-    data: { wins: { decrement: 1 } },
-  });
-  // updated.count === 0 → nada a desfazer
-  ```
-- **DoD:** teste de 2 undos "simultâneos" (Promise.all no teste) → contador não fica negativo.
-- **Status:** ⬜ Pendente (fazer junto com A1)
-
-### ⬜ M1 — Sem authn/authz nas rotas (mutações públicas)
-- **Arquivos:** todas as `route.ts` de `api/killers/*`
-- **Problema:** qualquer um faz `PATCH .../win|loss|undo` e altera stats globais. (Sem dado sensível/PII → risco contido, mas escrita anônima.)
-- **Correção:** proteger mutações — no mínimo um segredo compartilhado / token de sessão simples; middleware de auth em `middleware.ts`.
-- **DoD:** requisição sem credencial → 401; teste cobrindo.
-- **Status:** ⬜ Pendente
-- ⚠️ *Superfície sensível (auth): decisão de produto sobre nível de proteção.*
+### ✅ M19 — Testes & tipagem dos testes (regressão de `tsc`)
+- **Arquivos:** vários `*.test.ts(x)`; foco em `src/app/api/stats/streaks/route.test.ts`, `src/app/api/killers/route.test.ts`, `src/app/page.test.tsx`, `src/app/api/streaks/matches/route.test.ts`.
+- **Situação (verificada):** cobertura **subiu muito** — **242 testes / 43 arquivos, todos verdes** (era 156). **Mas** `npx tsc --noEmit` **falha** com ~20 erros, **todos em arquivos de teste**, por causa do refactor:
+  - o mock de `auth()` é tipado como `NextMiddleware` (`vi.mocked(auth)` recebendo `Session`/`null` incompatível);
+  - mocks de `Match` desatualizados — faltam `userId`/`teamId`/`streakRunId` (schema novo);
+  - mock de `$transaction` com assinatura incompatível em `streaks/matches`.
+  Vitest usa esbuild (sem typecheck) → runtime passa, mas o **gate de tipos está vermelho**.
+- **Correção:** tipar o mock de `auth` corretamente (helper `mockAuth(session)`), atualizar factories de `Match` para o shape novo, ajustar o mock de `$transaction`. Rodar `tsc --noEmit` no CI (**M16**) para não regredir de novo.
+- **DoD:** `npx tsc --noEmit` limpo; `npm run test` verde; todo `src` com contraparte `.test`.
+- **Status:** ✅ Concluído (2026-07-12) — mock de `auth` tipado via `const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>)` (colapsa a sobrecarga `NextMiddleware`) em 8 arquivos; fixtures de `Match` com `userId/teamId/streakRunId`; `$transaction` com `as never`. **`tsc --noEmit` = 0 erros**, 242 testes verdes. *Resíduo (não bloqueante):* alguns atoms/templates ainda sem `.test` co-locado.
 
 ### ⬜ M2 — Sem rate limiting
-- **Arquivos:** rotas de mutação
-- **Problema:** spam de writes infla contadores e cresce `Match` sem limite (DoS-lite / custo).
-- **Correção:** rate limit por IP/rota (middleware ou lib). 
+- **Arquivos:** rotas de mutação; `src/proxy.ts`
+- **Problema:** `proxy.ts` só faz redirect de auth para `/dashboard`; não há rate limit. Spam de writes infla `Match` sem limite.
+- **Correção:** rate limit por IP/rota (no `proxy.ts` ou lib dedicada).
 - **DoD:** N+1 requisições rápidas → 429; teste.
-- **Status:** ⬜ Pendente
+- **Status:** ⬜ Pendente.
 
 ### ⬜ M3 — Sem headers de segurança / CSP
-- **Arquivos:** `next.config.ts`, ausência de `middleware.ts`
+- **Arquivos:** `next.config.ts` (sem `headers()`), `src/proxy.ts` (não injeta headers).
 - **Problema:** falta CSP, `frame-ancestors`/X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS.
-- **Correção:** função `headers()` no `next.config.ts` com o conjunto padrão de hardening.
-- **DoD:** headers presentes na resposta (verificar via `curl -I`).
-- **Status:** ⬜ Pendente
+- **Correção:** `headers()` no `next.config.ts` (ou no `proxy.ts`) com o conjunto padrão de hardening.
+- **DoD:** headers presentes na resposta (`curl -I`).
+- **Status:** ⬜ Pendente.
 
 ### ⬜ M8 — Sem `error.tsx` / `not-found.tsx` / `global-error.tsx`
 - **Arquivos:** ausência em `src/app/`
 - **Problema:** qualquer throw cai na tela de erro padrão / branca, sem `reset()`. Amplifica A3.
 - **Correção:** criar `app/error.tsx` (client boundary com `reset`) e `app/not-found.tsx`.
 - **DoD:** simular erro em componente → boundary aparece com botão de retry.
-- **Status:** ⬜ Pendente
+- **Status:** ⬜ Pendente.
 
 ### ⬜ M9 — `force-dynamic` sem `loading.tsx` / Suspense (sem streaming)
-- **Arquivo:** `src/app/page.tsx:5`
-- **Problema:** a página inteira bloqueia na query Prisma inicial; sem skeleton no 1º paint.
-- **Correção:** adicionar `app/loading.tsx` e/ou streaming com `<Suspense>`. Avaliar `revalidate` no lugar de `force-dynamic` se a frescura permitir.
-- **DoD:** skeleton visível durante o carregamento inicial.
-- **Status:** ⬜ Pendente
+- **Arquivo:** `src/app/dashboard/page.tsx:7` (era `src/app/page.tsx`)
+- **Problema:** `export const dynamic = "force-dynamic"` + `await getKillersForUser(...)` bloqueiam o 1º paint; sem skeleton/loading no App Router.
+- **Correção:** adicionar `app/dashboard/loading.tsx` e/ou `<Suspense>`. Avaliar `revalidate` se a frescura permitir.
+- **DoD:** skeleton visível durante o carregamento inicial do dashboard.
+- **Status:** ⬜ Pendente.
 
-### ⬜ M10 — `next/image` com `unoptimized` em imagens remotas grandes
-- **Arquivos:** `src/components/atoms/KillerImage.tsx:29`, `src/components/molecules/AutocompleteOption.tsx:29`
-- **Problema:** PNGs full-size da wikia servidas sem resize/webp. `MatchItem.tsx` não usa `unoptimized` (inconsistente).
-- **Correção:** remover `unoptimized` (hosts já estão em `remotePatterns`); padronizar em todos os `<Image>`.
-- **DoD:** imagens servidas via `/_next/image` otimizadas; LCP melhora perceptível.
-- **Status:** ⬜ Pendente
+### ⬜ M10 — `next/image` com `unoptimized`
+- **Arquivos:** `src/components/atoms/KillerImage.tsx:29`, `src/components/molecules/AutocompleteOption.tsx:30` (ambos com `unoptimized`). `MatchItem.tsx` e `KillerDetailPanel.tsx` **não** usam — inconsistente.
+- **Problema:** PNGs full-size da wikia servidos sem resize/webp.
+- **Correção:** remover `unoptimized` (hosts já em `remotePatterns`); padronizar todos os `<Image>`.
+- **DoD:** imagens via `/_next/image`; LCP melhora perceptível.
+- **Status:** ⬜ Pendente.
 
 ### ⬜ M11 — `/api/stats/streaks` carrega todos os `Match` em memória por request
-- **Arquivo:** `src/app/api/stats/streaks/route.ts:7-10`
-- **Problema:** `findMany` sem limite + cômputo na aplicação a cada request, sem cache; refetch a cada mutação.
-- **Correção:** agregar/limitar em SQL, cachear, ou computar streak incremental. Curto prazo: cache com `revalidate`/tag.
+- **Arquivo:** `src/app/api/stats/streaks/route.ts:13-17`
+- **Problema:** `findMany` sem limite + cômputo na aplicação a cada request, sem cache; refetch a cada mudança de `totalMatches`.
+- **Correção:** agregar/limitar em SQL, cachear (`revalidate`/tag) ou computar streak incremental.
 - **DoD:** endpoint não escala linearmente com o histórico total; teste do cômputo mantido.
-- **Status:** ⬜ Pendente
+- **Status:** ⬜ Pendente. (Combina com **M5** — mesmo arquivo.)
 
 ### ⬜ M12 — Autocomplete sem semântica ARIA de combobox
-- **Arquivos:** `src/components/molecules/KillerSearchInput.tsx:30-42`, `src/components/organisms/KillerAutocomplete.tsx:56-72`
+- **Arquivos:** `src/components/molecules/KillerSearchInput.tsx:30-42`, `src/components/organisms/KillerAutocomplete.tsx:56-72`, `src/components/molecules/AutocompleteOption.tsx`
 - **Problema:** input sem `role=combobox`/`aria-expanded`/`aria-controls`/`aria-activedescendant`; dropdown sem `role=listbox`; opções sem `role=option`/`aria-selected`.
 - **Correção:** seguir o padrão APG Combobox; ligar `aria-activedescendant` ao `highlightedIndex`.
-- **DoD:** navegação por teclado anunciada por leitor de tela; teste de a11y dos atributos.
-- **Status:** ⬜ Pendente
+- **DoD:** navegação por teclado anunciada por leitor de tela; teste dos atributos.
+- **Status:** ⬜ Pendente. (Fazer junto de **B9**.)
 
-### ⬜ M13 — Pie chart: cor-única com ~15 vermelhos e sem alternativa acessível
+### 🟡 M13 — Pie chart: paleta de vermelhos e alternativa acessível
 - **Arquivo:** `src/components/organisms/KillersPieChart.tsx:20-24,81-103`
-- **Problema:** paleta de 15 tons de vermelho quase idênticos; SVG sem `role=img`/`<title>`.
-- **Correção:** paleta distinguível (ou padrões/hachuras) + resumo textual/tabela acessível; adicionar título acessível. Ver skill `dataviz` para paleta categórica.
-- **DoD:** segmentos distinguíveis; alternativa não-visual disponível.
-- **Status:** ⬜ Pendente
+- **Situação (verificada):** paleta `BLOOD_PALETTE` de **15 tons de vermelho** quase idênticos persiste; o `<svg>` ainda não tem `role=img`/`<title>`. **Porém** já existe uma **legenda textual** (`<ul>` com nome + cor, linhas 93-103) — uma alternativa não-visual parcial.
+- **Correção:** paleta distinguível (ou padrões/hachuras) + `role="img"`/título acessível no gráfico. Ver skill `dataviz` para paleta categórica.
+- **DoD:** segmentos distinguíveis; alternativa não-visual completa.
+- **Status:** 🟡 Parcial — legenda existe; paleta/`role` faltam. (Combina com **B10**.)
 
 ### ⬜ M14 — Sem `prefers-reduced-motion`
-- **Arquivo:** `src/app/globals.css:14-26,155-169`
-- **Problema:** `pulseRing` roda **infinito**, além de fadeInUp/shimmer/`scroll-behavior:smooth`/transforms; sem opção de reduzir.
+- **Arquivo:** `src/app/globals.css` (`pulseRing` infinito na `.player-avatar-ring:162`, `scroll-behavior: smooth:57`, `fadeInUp`, `shimmerBlood`)
+- **Problema:** animações rodam sem opção de reduzir; `pulseRing` é `infinite`.
 - **Correção:** `@media (prefers-reduced-motion: reduce)` desativando/atenuando animações e o scroll suave.
-- **DoD:** com reduced-motion ligado no SO, animações param.
-- **Status:** ⬜ Pendente
+- **DoD:** com reduced-motion no SO, animações param.
+- **Status:** ⬜ Pendente.
 
 ### ⬜ M15 — Contraste `text-muted` abaixo de WCAG AA
 - **Arquivo:** `src/app/globals.css:36`
-- **Problema:** `--color-muted: #636366` sobre `--color-void: #0A0A0A` ≈ **3.3:1** (< 4.5:1), usado em muito texto secundário/labels em `text-xs`.
-- **Correção:** clarear o token para uso em texto (~`#8e8e93`) ou reservar `#636366` só para elementos não-textuais.
-- **DoD:** contraste ≥ 4.5:1 no texto secundário (validar em ferramenta de contraste).
-- **Status:** ⬜ Pendente
+- **Problema:** `--color-muted: #636366` sobre `--color-void: #0A0A0A` ≈ **3.3:1** (< 4.5:1), usado em muito texto secundário em `text-xs`.
+- **Correção:** clarear o token p/ texto (~`#8e8e93`) ou reservar `#636366` só para não-textuais.
+- **DoD:** contraste ≥ 4.5:1 no texto secundário.
+- **Status:** ⬜ Pendente.
 
-### ⬜ M19 — Testes obrigatórios ausentes (viola o DoD do próprio repo)
-- **Arquivos:** ex.: `TeamTabTemplate`, `PlayerCard`, `MatchHistoryList`, `MatchItem`, `KillerAutocomplete`, vários atoms; e edge-cases de A1/A2/M18 sem teste.
-- **Problema:** `CLAUDE.md` exige teste co-locado para todo componente/hook/util/rota; vários faltam e os bugs mais sérios estão descobertos.
-- **Correção:** cobrir os componentes sem teste + casos de erro/edge das rotas (idealmente feito junto de cada correção acima).
-- **DoD:** todo arquivo de `src` com contraparte `.test`; `npm run test` cobre os caminhos de erro.
-- **Status:** ⬜ Pendente (transversal — fechar por último)
+### 🟡 M16 — Sem CI/CD
+- **Arquivo:** `.github/workflows/ci.yml` (criado)
+- **Problema:** nada rodava `tsc --noEmit`, `eslint`, `vitest`, `next build` automaticamente. **Prova viva:** a regressão de tipos em **M19** passou despercebida justamente por não haver CI.
+- **Feito (2026-07-12):** workflow `ci.yml` em push/PR para `master`: install (`npm ci`) → `prisma generate` → **typecheck** → lint → test → build. Roda em Node 20, com env dummy (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_SECRET`) — CI não toca DB real. **Validado localmente:** os 4 passos passam (build compila todas as rotas como dinâmicas).
+- **Falta (manual, no GitHub — não dá pra fazer via código):** habilitar **branch protection** em `master` e marcar o job `verify` como **required check**. Só então um merge vermelho fica bloqueado (crítico porque o deploy é automático no merge).
+- **DoD:** workflow verde em um PR; merge bloqueado se falhar.
+- **Status:** 🟡 Parcial — workflow pronto e validado; pendente o toggle de branch protection.
 
 ---
 
 ## 🟢 BAIXO
 
-### ⬜ B5 — `@eslint/eslintrc` é phantom dependency
-- **Arquivo:** `eslint.config.mjs:3` — importado mas não declarado em `package.json` (resolve só via eslint-config-next).
-- **Correção:** adicionar em `devDependencies` (ou migrar para flat nativo `@next/eslint-plugin-next`). **Fazer junto de M7.**
-- **Status:** ⬜ Pendente
+### ✅ B5 — `@eslint/eslintrc` é phantom dependency
+- **Arquivo:** `eslint.config.mjs:3` — `import { FlatCompat } from "@eslint/eslintrc"`.
+- **Feito (2026-07-12):** declarado `"@eslint/eslintrc": "^2.1.4"` em `devDependencies` (versão que já resolvia transitivamente); lockfile sincronizado; `npm run lint` segue verde (0 erros).
+- **Status:** ✅ Concluído.
 
-### ⬜ B6 — Drift de dependências + dep morta
+### 🟡 B6 — Drift de dependências + dep morta
 - **Arquivo:** `package.json`
-- **Problema:** `eslint-config-next@15` com `next@16` e `eslint@8` (recomendado 9); `jsdom@29` instalado e **não usado** (ambiente é happy-dom).
-- **Correção:** alinhar `eslint-config-next` à 16.x; remover `jsdom`. **Fazer junto de M7.**
-- **Status:** ⬜ Pendente
+- **Feito (2026-07-12):** `jsdom` removido das `devDependencies` (era dep morta declarada — ambiente é `happy-dom@20`). *Nota:* o pacote ainda é instalado fisicamente como **optional peer** do `vitest` (npm auto-instala optional peers); tirá-lo de vez exigiria política `omit=optional`, que afetaria outras deps — não vale.
+- **Adiado (com motivo):** `eslint-config-next@16` exige **`eslint >= 9`** → é uma **migração ESLint 8→9** (flat config, plugins) à parte. Não feito agora para **não desestabilizar o gate recém-verde**. Fazer como item próprio.
+- **Status:** 🟡 Parcial — dep morta resolvida; alinhamento eslint-config-next/eslint-9 pendente (deliberado).
 
 ### ⬜ B1 — Duplicação de lógica de stats
-- **Arquivo:** `src/components/organisms/StatisticsOverview.tsx:40-43` — reimplementa win-rate/agregação em vez de reusar `@/lib/utils`.
-- **Correção:** reusar `computeStats`/`formatPercent`.
-- **Status:** ⬜ Pendente
+- **Arquivo:** `src/components/organisms/StatisticsOverview.tsx:40-43` — reimplementa soma/win-rate em vez de reusar `@/lib/utils`.
+- **Nuance:** hoje agrega um array **filtrado** (`target`), enquanto `computeStats` é por-killer; ainda assim o cálculo de `winRate` duplica `formatPercent`/lógica de utils.
+- **Correção:** extrair um agregador em `lib/utils` e reusar (evita drift de fórmula).
+- **Status:** ⬜ Pendente.
 
 ### ⬜ B2 — Doc/impl drift: "optimistic updates"
-- **Arquivo:** `src/hooks/useKillers.ts:51-67` — o `CLAUDE.md` diz otimista, mas o código é pessimista (aguarda o servidor).
+- **Arquivo:** `src/hooks/useKillers.ts:51-121` — `CLAUDE.md` e `README` dizem otimista, mas o código é **pessimista** (aguarda o servidor e só então `setKillers`).
 - **Correção:** ajustar a doc **ou** implementar otimista + rollback (decidir).
-- **Status:** ⬜ Pendente
+- **Status:** ⬜ Pendente. (Combina com **B13**.)
 
-### ⬜ B3 — `useKillers`: loading single-slot / `error` não exibido
-- **Arquivo:** `src/hooks/useKillers.ts:28-32`
-- **Correção:** usar `Set<number>` por ação; exibir `error` na UI (além do toast).
-- **Status:** ⬜ Pendente
+### 🟡 B3 — `useKillers`: loading & `error` não exibido
+- **Arquivo:** `src/hooks/useKillers.ts:29-32`
+- **Situação (verificada):** o "single-slot" foi **parcialmente** resolvido — hoje há 4 slots (`loadingWin/Loss/UndoWin/UndoLoss`), cada um `number | null` (um id por tipo de ação). Ainda não é `Set<number>` (duas ações do mesmo tipo em paralelo se atropelam) e `error` continua só no toast, sem estado inline na UI.
+- **Correção:** `Set<number>` por ação (se necessário paralelismo) e exibir `error` inline.
+- **Status:** 🟡 Parcial.
 
-### ⬜ B4 — Sinal de refetch frágil em streaks
-- **Arquivo:** `src/components/templates/StatisticsTabTemplate.tsx:20-29` — `useStreaks(totalMatches)` + `eslint-disable exhaustive-deps` com nonce `Date.now()`.
-- **Correção:** elevar o estado de seleção; refetch por evento/versão explícita.
-- **Status:** ⬜ Pendente
+### ⬜ B4 — Sinal de refetch frágil em streaks → **RESOLVIDO (essencial)**
+- **Arquivo:** `src/components/templates/StatisticsTabTemplate.tsx:20-21`, `src/hooks/useStreaks.ts`
+- **Situação (verificada):** o antipadrão `Date.now()` como nonce **sumiu**. Hoje `useStreaks(totalMatches)` refaz o fetch quando a **contagem de partidas** muda. O `eslint-disable exhaustive-deps` restante é do efeito de `statsNav?.nonce` (padrão legítimo de navegação), não das streaks.
+- **Resíduo mínimo:** trocar 1 win por 1 loss mantém `total` constante e não dispara refetch (edge case).
+- **Status:** ✅ Concluído (o problema descrito foi eliminado).
 
-### ⬜ B7 — Animation-delay escala com índice global
-- **Arquivo:** `src/components/molecules/MatchItem.tsx:24-25` — itens de "Load more" surgem com 800ms+ de atraso.
-- **Correção:** delay relativo à página ou teto no delay.
-- **Status:** ⬜ Pendente
+### 🟡 B7 — Animation-delay escala com índice global
+- **Arquivo:** `src/components/molecules/MatchItem.tsx:25`
+- **Situação (verificada):** antes ~800ms+; hoje `animationDelay: ${index * 40}ms`. Ainda **escala com o índice global** (sem teto e sem reset por página) → itens tardios do "Load more" ainda atrasam.
+- **Correção:** delay relativo à página **ou** teto (ex.: `Math.min(index, 8) * 40`).
+- **Status:** 🟡 Parcial — severidade reduzida.
 
 ### ⬜ B8 — `KillerCard` clicável (role=button) sem foco visível
-- **Arquivo:** `src/components/organisms/KillerCard.tsx:43-58`
-- **Correção:** adicionar `focus-visible` ring. **Fazer junto da Fase 5 (a11y).**
-- **Status:** ⬜ Pendente
+- **Arquivo:** `src/components/organisms/KillerCard.tsx:43-58` — tem `role=button`/`tabIndex`/`onKeyDown`, mas **sem** `focus-visible` ring.
+- **Correção:** adicionar `focus-visible` ring com token de cor.
+- **Status:** ⬜ Pendente. (Fase 5 / a11y.)
 
 ### ⬜ B9 — Input de busca sem label acessível
-- **Arquivo:** `src/components/molecules/KillerSearchInput.tsx:30`
-- **Correção:** `aria-label` ou `<label>` visualmente oculto. **Fazer junto de M12.**
-- **Status:** ⬜ Pendente
+- **Arquivo:** `src/components/molecules/KillerSearchInput.tsx:30` — o `<input>` não tem `aria-label`/`<label>` (só o botão de limpar tem).
+- **Correção:** `aria-label` ou `<label>` visualmente oculto.
+- **Status:** ⬜ Pendente. (Fazer junto de **M12**.)
 
 ### ⬜ B10 — Hex cru em componente/inline
-- **Arquivo:** `src/components/organisms/KillersPieChart.tsx:56,100` (`#9ca3af`, `#10B981`, paleta) — viola "no raw color values".
-- **Correção:** mover para tokens/CSS vars. **Fazer junto de M13.**
-- **Status:** ⬜ Pendente
+- **Arquivo:** `src/components/organisms/KillersPieChart.tsx:56,100` (`#10B981`, `#9ca3af`) + `BLOOD_PALETTE` (20-24) — viola "no raw color values".
+- **Correção:** mover para tokens/CSS vars.
+- **Status:** ⬜ Pendente. (Fazer junto de **M13**.)
 
-### ⬜ B11 — Texto de UI em português (viola regra English-only)
-- **Arquivos:** `prisma/seed.ts:7-311` ("Trapper (Caçador)"…), `src/components/templates/TeamTabTemplate.tsx:34-52` ("Spectro", "Drácula", "Clima Esquisito").
-- **Correção:** normalizar nomes/labels para inglês. (Locale `pt-BR` em datas é permitido.)
-- **Status:** ⬜ Pendente
+### 🟡 B11 — Texto de UI em português (viola English-only)
+- **Arquivos:** `prisma/seed.ts:7,49,77,126,147,154` (ainda "Trapper (Caçador)", "Huntress (Caçadora)", "Clown (Palhaço)", "Deathslinger (Mercenário)", "Twins (Gêmeos)", "Trickster (Trapaça)").
+- **Situação (verificada):** o `TeamTabTemplate` **não** tem mais nomes PT hardcoded ("Spectro"/"Drácula"/"Clima Esquisito" sumiram) — virou data-driven por usuário. **Falta só o seed.**
+- **Correção:** normalizar os nomes dos killers para inglês no `seed.ts`. (Locale `pt-BR` em datas continua permitido — ver `MatchItem.tsx:14`.)
+- **Status:** 🟡 Parcial — só o seed remanesce.
 
-### ⬜ B12 — `<Image src="">` no Team (mitigado por onError)
-- **Arquivos:** `src/components/templates/TeamTabTemplate.tsx:65,78` → `src/components/organisms/PlayerCard.tsx:113-120`
-- **Correção:** render condicional do fallback quando `imageUrl` vazio, em vez de passar `""`.
-- **Status:** ⬜ Pendente
+### ⬜ B12 — `<Image src="">` (reaparece em novo componente)
+- **Arquivos (original resolvido):** `TeamTabTemplate`/`PlayerCard` — `PlayerCard` foi removido; roster usa avatar com iniciais → **sem `src=""`**.
+- **Reaparecimento (verificado):** `src/components/organisms/KillerDetailPanel.tsx` passa `imageUrl` direto ao `<Image>`; com `imageUrl` vazio o teste emite *"An empty string was passed to the src attribute"*.
+- **Correção:** render condicional do fallback quando `imageUrl` vazio, em vez de `src=""`.
+- **Status:** 🟡 Parcial — alvo original resolvido; **recorrência** no `KillerDetailPanel` a corrigir.
 
-### ⬜ B13 — README/CLAUDE.md desatualizados
-- **Arquivo:** `README.md:7,50` — diz "Next.js 15" e "42 killers"; real é Next 16, 43 seeds, + Match/history/streaks/undo/Team.
-- **Correção:** atualizar README (e ajustar `CLAUDE.md` onde a arquitetura mudou).
-- **Status:** ⬜ Pendente
+### ⬜ B13 — README/CLAUDE.md desatualizados (pioraram com o refactor)
+- **Arquivos:** `README.md`, `CLAUDE.md`
+- **Situação (verificada):** ambos descrevem o app **antigo**:
+  - `README.md`: "Next.js 15", "42 killers", `page.tsx` como root, "optimistic feedback"; **sem** menção a auth/login, Teams, Streaks, histórico, dashboard.
+  - `CLAUDE.md`: schema do `Killer` **com `wins`/`losses`** (removidos!), "42 killers", `force-dynamic` em `page.tsx`, "optimistic updates" em `useKillers`, só a API de killers.
+- **Correção:** atualizar README e `CLAUDE.md` para: Next 16, auth/multiusuário, schema derivado de `Match`, novas rotas (players/teams/streaks/history/signup), páginas (login/signup/dashboard). Registrar a ADR de **M17** no `CLAUDE.md`.
+- **Status:** ⬜ Pendente. **(Importante: o `CLAUDE.md` guia agentes — schema errado induz erro.)**
 
 ---
 
@@ -337,21 +305,25 @@ Cada item é uma tarefa rastreável: vamos marcando `[x]` conforme resolvemos.
 | ID | Item | Ação |
 |----|------|------|
 | I1 | `reactCompiler: true` no top-level | ✅ **Correto no Next 16** (estável). Nenhuma ação. |
-| I2 | Injeção (SQL/NoSQL/cmd) | ✅ Sem achados — Prisma parametrizado, sem SQL cru. Manter. |
+| I2 | Injeção (SQL/NoSQL/cmd) | ✅ Sem achados — Prisma parametrizado em todas as rotas novas (players/teams/streaks); sem SQL cru. Manter. |
 | I3 | XSS | ✅ Sem achados — sem `dangerouslySetInnerHTML`. Manter. |
-| I4 | Secrets | ✅ Sem achados — `.env` ignorado, sem `NEXT_PUBLIC_*` sensível. Manter. |
+| I4 | Secrets | ✅ `.env` ignorado. ⚠️ **Novo:** o refactor exige `AUTH_SECRET` (NextAuth) e `DATABASE_URL_UNPOOLED` (schema) — garantir que estão no vault/deploy e no `.env.example`. |
 | I5 | Arquitetura de monorepo | **N/A** — app única. |
-| I6 | PII: nomes/nicks reais em `TeamTabTemplate` | ⏭️ Decisão: manter? anonimizar? (relevante se repo/app for público). |
-| I7 | 3 famílias de fonte | ⏭️ Confirmar uso de JetBrains Mono; remover se não usada. |
+| I6 | PII: nomes/nicks reais no Team | ✅ **Resolvido pelo redesign** — nomes não são mais hardcoded no source; são dados por-usuário atrás de auth. *Nota LGPD:* como agora é dado de usuário em base real, tratar retenção/anonimização é decisão de produto (revisão humana se a base sair do ambiente). |
+| I7 | 3 famílias de fonte | ✅ **JetBrains Mono confirmada em uso** (`KillerRankingList` usa `font-mono`; carregada em `layout.tsx`). Manter as 3 fontes. |
+
+### Observações do modelo de dados (baixo risco, registrar)
+- `Match.userId` é **opcional** (`String?`) no schema — provável artefato de migração pré-auth. Partidas com `userId` nulo ficam invisíveis às queries (todas filtram por `userId`), mas são "órfãs". Avaliar backfill + tornar `NOT NULL`, ou documentar a intenção.
 
 ---
 
 ## 📚 Referências
 
-- Auditoria completa: ver conversa de origem (tabela de achados por gravidade).
-- Regras do projeto: `CLAUDE.md` (testes obrigatórios, tokens, guard clauses, React Compiler).
-- Next 16 — remoção do `next lint` e `reactCompiler` estável: doc oficial de upgrade v16.
+- Auditoria original: conversa de origem (tabela de achados por gravidade), datada de 2026-07-08.
+- Regras do projeto: `CLAUDE.md` (testes obrigatórios, tokens, guard clauses, React Compiler) — **atenção: `CLAUDE.md` está desatualizado, ver B13**.
+- Next 16 — `next lint` removido, `reactCompiler` estável, `middleware`→`proxy`: doc oficial de upgrade v16.
 
 ---
 
-_Última atualização: 2026-07-08 — 3/35 concluídos (Fase 0 ✅: A1, A2, A3)._
+_Última atualização: 2026-07-12 — revisão completa contra o código atual pós-refactor (auth + multiusuário + Match como fonte única)._
+_Progresso: 10/35 concluídos, 10/35 parciais, 15/35 pendentes. Gate: `lint` ✅ · `test` ✅ (242) · `tsc --noEmit` ✅ (0 erros). Fase 1 concluída (falta habilitar branch protection no GitHub — M16)._

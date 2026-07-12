@@ -9,19 +9,20 @@ vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
 const SESSION: Session = { user: { id: "u1" }, expires: "2999-01-01T00:00:00.000Z" };
+const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>);
 
 describe("HomePage (splash)", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("shows the splash with an Enter CTA when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValueOnce(null);
+    authMock.mockResolvedValueOnce(null);
     render(await HomePage());
     expect(screen.getByRole("link", { name: /enter the fog/i })).toHaveAttribute("href", "/login");
     expect(redirect).not.toHaveBeenCalled();
   });
 
   it("redirects to /dashboard when already authenticated", async () => {
-    vi.mocked(auth).mockResolvedValueOnce(SESSION);
+    authMock.mockResolvedValueOnce(SESSION);
     await HomePage();
     expect(redirect).toHaveBeenCalledWith("/dashboard");
   });

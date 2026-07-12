@@ -46,7 +46,9 @@ describe("POST /api/streaks/matches", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getSessionUserId).mockResolvedValue("u1");
-    vi.mocked(prisma.$transaction).mockImplementation((cb: (tx: typeof prisma) => unknown) => cb(prisma));
+    vi.mocked(prisma.$transaction).mockImplementation(
+      ((cb: (tx: typeof prisma) => unknown) => cb(prisma)) as never
+    );
     vi.mocked(getTeamStreak).mockResolvedValue(summary);
     vi.mocked(prisma.team.findUnique).mockResolvedValue(ownerTeam);
     vi.mocked(prisma.killer.findUnique).mockResolvedValue(killer as never);

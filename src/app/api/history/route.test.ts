@@ -12,9 +12,13 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 const SESSION: Session = { user: { id: "u1" }, expires: "2999-01-01T00:00:00.000Z" };
+const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>);
 const matchFixture = {
   id: 1,
+  userId: "u1",
   killerId: 1,
+  teamId: null,
+  streakRunId: null,
   result: "win" as const,
   createdAt: new Date(),
   killer: { id: 1, name: "Trapper", imageUrl: "" },
@@ -34,11 +38,11 @@ function reqRaw(query: string) {
 describe("GET /api/history", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(auth).mockResolvedValue(SESSION);
+    authMock.mockResolvedValue(SESSION);
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValueOnce(null);
+    authMock.mockResolvedValueOnce(null);
     const res = await GET(req());
     expect(res.status).toBe(401);
   });

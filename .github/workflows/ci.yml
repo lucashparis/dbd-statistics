@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+# Deploy is automatic on merge to master, so this gate must be green before merge.
+# Enable branch protection on `master` and mark the `verify` job as a required check.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck · Lint · Test · Build
+    runs-on: ubuntu-latest
+    env:
+      # Dummy values — CI never connects to a real database. Prisma generate and
+      # Next build only need these variables to be present, not valid.
+      DATABASE_URL: postgresql://user:pass@localhost:5432/ci
+      DATABASE_URL_UNPOOLED: postgresql://user:pass@localhost:5432/ci
+      AUTH_SECRET: ci-dummy-secret-not-used-for-real-auth
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build

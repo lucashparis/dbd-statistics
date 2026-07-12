@@ -13,6 +13,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 const SESSION: Session = { user: { id: "u1" }, expires: "2999-01-01T00:00:00.000Z" };
+const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>);
 const killerRow = {
   id: 1,
   name: "Trapper",
@@ -28,11 +29,11 @@ function req() {
 describe("PATCH /api/killers/[id]/win/undo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(auth).mockResolvedValue(SESSION);
+    authMock.mockResolvedValue(SESSION);
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValueOnce(null);
+    authMock.mockResolvedValueOnce(null);
     const res = await PATCH(req(), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(401);
   });
