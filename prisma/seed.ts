@@ -317,17 +317,8 @@ async function main() {
   for (const killer of killers) {
     await prisma.killer.upsert({
       where: { name: killer.name },
-      update: {
-        imageUrl: killer.imageUrl,
-        wins: killer.wins,
-        losses: killer.losses,
-      },
-      create: {
-        name: killer.name,
-        imageUrl: killer.imageUrl,
-        wins: killer.wins,
-        losses: killer.losses,
-      },
+      update: { imageUrl: killer.imageUrl },
+      create: { name: killer.name, imageUrl: killer.imageUrl },
     });
   }
 

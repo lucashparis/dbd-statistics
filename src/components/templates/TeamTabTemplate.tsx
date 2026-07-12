@@ -1,86 +1,15 @@
+"use client";
+
 import * as React from "react";
-import { PlayerCard, type TeamPlayer } from "@/components/organisms/PlayerCard";
+import { usePlayers } from "@/hooks/usePlayers";
+import { useTeams } from "@/hooks/useTeams";
+import { PlayerRoster } from "@/components/organisms/PlayerRoster";
+import { TeamRoster } from "@/components/organisms/TeamRoster";
 
-const TEAM_PLAYERS: TeamPlayer[] = [
-  {
-    name: "Lucas Paris",
-    nick: "OldDeadMemories",
-    killer: {
-      name: "Kaneki",
-      imageUrl: "/images/killers/kaneki.webp",
-    },
-    survivor: {
-      name: "Nea Karsson",
-      imageUrl: "/images/surv/paris.webp",
-      skin: "Eto Yoshimura",
-    },
-  },
-  {
-    name: "Fran Coelho",
-    nick: "Francyx",
-    killer: {
-      name: "Sadako",
-      imageUrl: "/images/killers/onryo.webp",
-    },
-    survivor: {
-      name: "Michonne",
-      imageUrl: "/images/surv/fran.webp",
-    },
-  },
-  {
-    name: "Gabriel Zubioli",
-    nick: "Zubioli",
-    killer: {
-      name: "Spectro",
-      imageUrl: "/images/killers/wraith.webp",
-    },
-    survivor: {
-      name: "Feng Min",
-      imageUrl: "/images/surv/zubioli.webp",
-    },
-  },
-  {
-    name: "Breno Antonuci",
-    nick: "BreNaN",
-    killer: {
-      name: "Drácula",
-      imageUrl: "/images/killers/dark-lord.webp",
-    },
-    survivor: {
-      name: "Sable Ward",
-      skin: "Clima Esquisito",
-      imageUrl: "/images/surv/breno.webp",
-    },
-  },
-  {
-    name: "Alison Gomes",
-    nick: "menob7",
-    killer: {
-      name: "Vecna",
-      imageUrl: "/images/killers/vecna.webp",
-    },
-    survivor: {
-      name: "Ace Visconti",
-      skin: "",
-      imageUrl: "",
-    },
-  },
-  {
-    name: "Jean Claus",
-    nick: "KLAUSjKLAUS",
-    killer: {
-      name: "Spirit",
-      imageUrl: "/images/killers/spirit.webp",
-    },
-    survivor: {
-      name: "Cheryl Mason",
-      skin: "Hinako",
-      imageUrl: "",
-    },
-  },
-];
+export function TeamTabTemplate({ isActive }: { isActive: boolean }) {
+  const players = usePlayers(isActive);
+  const teams = useTeams(isActive);
 
-export function TeamTabTemplate() {
   return (
     <div className="space-y-10">
       <header className="text-center space-y-2">
@@ -101,10 +30,24 @@ export function TeamTabTemplate() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-        {TEAM_PLAYERS.map((player, index) => (
-          <PlayerCard key={player.nick} player={player} index={index} />
-        ))}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <PlayerRoster
+          players={players.players}
+          loading={players.loading}
+          saving={players.saving}
+          deletingId={players.deletingId}
+          onAdd={players.addPlayer}
+          onDelete={players.deletePlayer}
+        />
+        <TeamRoster
+          teams={teams.teams}
+          players={players.players}
+          loading={teams.loading}
+          saving={teams.saving}
+          deletingId={teams.deletingId}
+          onCreate={teams.createTeam}
+          onDelete={teams.deleteTeam}
+        />
       </div>
     </div>
   );

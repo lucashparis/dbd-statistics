@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 enum Result {
@@ -12,24 +13,101 @@ enum Result {
   loss
 }
 
+enum StreakStatus {
+  active
+  ended
+}
+
+model User {
+  id        String      @id @default(cuid())
+  email     String      @unique
+  name      String?
+  password  String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  players   Player[]
+  teams     Team[]
+  matches   Match[]
+  streaks   StreakRun[]
+}
+
 model Killer {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   imageUrl  String
-  wins      Int      @default(0)
-  losses    Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   matches   Match[]
 }
 
-model Match {
-  id        Int      @id @default(autoincrement())
-  killerId  Int
-  result    Result
-  killer    Killer   @relation(fields: [killerId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+model Player {
+  id        Int          @id @default(autoincrement())
+  userId    String
+  name      String
+  nick      String
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teams     TeamPlayer[]
 
+  @@unique([userId, nick])
+  @@index([userId])
+}
+
+model Team {
+  id        Int          @id @default(autoincrement())
+  userId    String
+  name      String
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members   TeamPlayer[]
+  matches   Match[]
+  streaks   StreakRun[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TeamPlayer {
+  teamId   Int
+  playerId Int
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, playerId])
+  @@index([playerId])
+}
+
+model Match {
+  id          Int        @id @default(autoincrement())
+  userId      String?
+  killerId    Int
+  teamId      Int?
+  streakRunId Int?
+  result      Result
+  createdAt   DateTime   @default(now())
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  killer      Killer     @relation(fields: [killerId], references: [id], onDelete: Cascade)
+  team        Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  streakRun   StreakRun? @relation(fields: [streakRunId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
   @@index([killerId])
+  @@index([teamId])
   @@index([createdAt])
+}
+
+model StreakRun {
+  id        Int          @id @default(autoincrement())
+  userId    String
+  teamId    Int
+  winCount  Int          @default(0)
+  status    StreakStatus @default(active)
+  startedAt DateTime     @default(now())
+  endedAt   DateTime?
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  matches   Match[]
+
+  @@index([userId])
+  @@index([teamId])
 }

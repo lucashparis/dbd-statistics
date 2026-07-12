@@ -6,6 +6,7 @@ import { TabNav, type TabId } from "@/components/molecules/TabNav";
 
 const TABS = [
   { id: "killers" as TabId, label: "Killers" },
+  { id: "streak" as TabId, label: "Streak" },
   { id: "statistics" as TabId, label: "Statistics" },
   { id: "team" as TabId, label: "Team" },
   { id: "history" as TabId, label: "History" },
@@ -13,6 +14,7 @@ const TABS = [
 
 interface AppShellProps {
   killersContent: React.ReactNode;
+  streakContent: React.ReactNode;
   statisticsContent: React.ReactNode;
   teamContent: React.ReactNode;
   historyContent: React.ReactNode;
@@ -20,7 +22,7 @@ interface AppShellProps {
   onTabChange: (tab: TabId) => void;
 }
 
-export function AppShell({ killersContent, statisticsContent, teamContent, historyContent, activeTab, onTabChange }: AppShellProps) {
+export function AppShell({ killersContent, streakContent, statisticsContent, teamContent, historyContent, activeTab, onTabChange }: AppShellProps) {
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -31,6 +33,9 @@ export function AppShell({ killersContent, statisticsContent, teamContent, histo
       <main className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-6 sm:px-6">
         <div role="tabpanel" hidden={activeTab !== "killers"}>
           {killersContent}
+        </div>
+        <div role="tabpanel" hidden={activeTab !== "streak"}>
+          {streakContent}
         </div>
         <div role="tabpanel" hidden={activeTab !== "statistics"}>
           {statisticsContent}

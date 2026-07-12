@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { computeStreaks } from "@/lib/utils";
 import type { MatchResult, StreaksData } from "@/types/killer";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const matches = await prisma.match.findMany({
+    where: { userId: session.user.id },
     orderBy: { createdAt: "asc" },
     select: { killerId: true, result: true },
   });

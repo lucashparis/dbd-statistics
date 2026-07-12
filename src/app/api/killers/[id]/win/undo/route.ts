@@ -1,35 +1,35 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getKillerForUser } from "@/lib/killers";
 
 export async function PATCH(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
   const killerId = parseInt(id, 10);
-
   if (isNaN(killerId)) {
     return NextResponse.json({ error: "Invalid killer ID" }, { status: 400 });
   }
 
   try {
-    const killer = await prisma.$transaction(async (tx) => {
-      const current = await tx.killer.findUnique({ where: { id: killerId } });
-      if (!current) return null;
-      if (current.wins === 0) return current;
+    const userId = session.user.id;
 
-      const lastWin = await tx.match.findFirst({
-        where: { killerId, result: "win" },
-        orderBy: { createdAt: "desc" },
-      });
-      if (lastWin) await tx.match.delete({ where: { id: lastWin.id } });
-
-      return tx.killer.update({
-        where: { id: killerId },
-        data: { wins: { decrement: 1 } },
-      });
+    // Only quick-log matches (teamId null) can be undone here — streak matches
+    // are managed from the Streak tab.
+    const lastWin = await prisma.match.findFirst({
+      where: { userId, killerId, result: "win", teamId: null },
+      orderBy: { createdAt: "desc" },
     });
+    if (lastWin) await prisma.match.delete({ where: { id: lastWin.id } });
 
+    const killer = await getKillerForUser(userId, killerId);
     if (!killer) {
       return NextResponse.json({ error: "Killer not found" }, { status: 404 });
     }

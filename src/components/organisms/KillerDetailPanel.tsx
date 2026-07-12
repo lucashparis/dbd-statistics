@@ -75,8 +75,8 @@ export function KillerDetailPanel({ killer, longestWinStreak = 0, longestLossStr
           <StatItem icon={Skull} value={killer.losses} label="Losses" valueClassName="text-blood" highlight />
           <StatItem icon={Activity} value={killer.total} label="Total" />
           <StatItem icon={TrendingUp} value={`${killer.winRate}%`} label="Win Rate" highlight={killer.winRate >= 60} />
-          <StatItem icon={Flame} value={longestWinStreak} label="Win Streak" valueClassName="text-emerald-400" />
-          <StatItem icon={TrendingDown} value={longestLossStreak} label="Loss Streak" valueClassName="text-blood" />
+          <StatItem icon={Flame} value={longestWinStreak} label="Win Run" valueClassName="text-emerald-400" />
+          <StatItem icon={TrendingDown} value={longestLossStreak} label="Loss Run" valueClassName="text-blood" />
         </div>
 
         <WinRateBadge winRate={killer.winRate} className="max-w-xs" />

@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Session } from "next-auth";
 import { GET } from "@/app/api/history/route";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
+vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     match: { findMany: vi.fn(), count: vi.fn() },
   },
 }));
 
+const SESSION: Session = { user: { id: "u1" }, expires: "2999-01-01T00:00:00.000Z" };
 const matchFixture = {
   id: 1,
   killerId: 1,
@@ -28,7 +32,16 @@ function reqRaw(query: string) {
 }
 
 describe("GET /api/history", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(auth).mockResolvedValue(SESSION);
+  });
+
+  it("returns 401 when unauthenticated", async () => {
+    vi.mocked(auth).mockResolvedValueOnce(null);
+    const res = await GET(req());
+    expect(res.status).toBe(401);
+  });
 
   it("returns page 1 by default when no page param is provided", async () => {
     vi.mocked(prisma.match.findMany).mockResolvedValueOnce([matchFixture]);
@@ -37,6 +50,16 @@ describe("GET /api/history", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.matches).toHaveLength(1);
+  });
+
+  it("scopes the query to the current user", async () => {
+    vi.mocked(prisma.match.findMany).mockResolvedValueOnce([matchFixture]);
+    vi.mocked(prisma.match.count).mockResolvedValueOnce(1);
+    await GET(req());
+    expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1" } })
+    );
+    expect(vi.mocked(prisma.match.count)).toHaveBeenCalledWith({ where: { userId: "u1" } });
   });
 
   it("uses the provided page number to skip results", async () => {
@@ -49,10 +72,7 @@ describe("GET /api/history", () => {
   });
 
   it("returns hasMore true when more results exist beyond current page", async () => {
-    const tenMatches = Array.from({ length: 10 }, (_, i) => ({
-      ...matchFixture,
-      id: i + 1,
-    }));
+    const tenMatches = Array.from({ length: 10 }, (_, i) => ({ ...matchFixture, id: i + 1 }));
     vi.mocked(prisma.match.findMany).mockResolvedValueOnce(tenMatches);
     vi.mocked(prisma.match.count).mockResolvedValueOnce(25);
     const res = await GET(req(1));

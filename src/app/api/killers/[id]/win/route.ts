@@ -1,27 +1,28 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getKillerForUser } from "@/lib/killers";
 
 export async function PATCH(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
   const killerId = parseInt(id, 10);
-
   if (isNaN(killerId)) {
     return NextResponse.json({ error: "Invalid killer ID" }, { status: 400 });
   }
 
   try {
-    const [killer] = await prisma.$transaction([
-      prisma.killer.update({
-        where: { id: killerId },
-        data: { wins: { increment: 1 } },
-      }),
-      prisma.match.create({
-        data: { killerId, result: "win" },
-      }),
-    ]);
+    await prisma.match.create({
+      data: { userId: session.user.id, killerId, result: "win", teamId: null },
+    });
+    const killer = await getKillerForUser(session.user.id, killerId);
     return NextResponse.json(killer);
   } catch {
     return NextResponse.json(

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/templates/AppShell";
 import { KillersTabTemplate } from "@/components/templates/KillersTabTemplate";
 import { StatisticsTabTemplate } from "@/components/templates/StatisticsTabTemplate";
+import { StreakTabTemplate } from "@/components/templates/StreakTabTemplate";
 import { TeamTabTemplate } from "@/components/templates/TeamTabTemplate";
 import { HistoryTabTemplate } from "@/components/templates/HistoryTabTemplate";
 import { useKillers } from "@/hooks/useKillers";
@@ -55,8 +56,9 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
           onNavigateToStats={navigateToStats}
         />
       }
+      streakContent={<StreakTabTemplate isActive={activeTab === "streak"} killers={killers} />}
       statisticsContent={<StatisticsTabTemplate killers={killers} isLoading={isLoading} statsNav={statsNav} onNavigateToStats={navigateToStats} />}
-      teamContent={<TeamTabTemplate />}
+      teamContent={<TeamTabTemplate isActive={activeTab === "team"} />}
       historyContent={<HistoryTabTemplate isActive={activeTab === "history"} />}
     />
   );

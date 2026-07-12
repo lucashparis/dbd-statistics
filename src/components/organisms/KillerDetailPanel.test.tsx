@@ -24,8 +24,8 @@ const killer: KillerStats = {
 describe("KillerDetailPanel", () => {
   it("renders the per-killer streak labels", () => {
     render(<KillerDetailPanel killer={killer} />);
-    expect(screen.getByText("Win Streak")).toBeInTheDocument();
-    expect(screen.getByText("Loss Streak")).toBeInTheDocument();
+    expect(screen.getByText("Win Run")).toBeInTheDocument();
+    expect(screen.getByText("Loss Run")).toBeInTheDocument();
   });
 
   it("displays the provided streak values", () => {

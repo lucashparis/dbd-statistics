@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cinzel, Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { Providers } from "@/components/Providers";
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -46,7 +47,7 @@ export default function RootLayout({
           expand
           toastOptions={{ duration: 5000 }}
         />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

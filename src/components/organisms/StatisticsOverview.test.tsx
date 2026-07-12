@@ -81,8 +81,8 @@ describe("StatisticsOverview", () => {
 
   it("renders the streak cards", () => {
     render(<StatisticsOverview killers={killers} selectedKiller={null} />);
-    expect(screen.getByText("Best Win Streak")).toBeInTheDocument();
-    expect(screen.getByText("Worst Loss Streak")).toBeInTheDocument();
+    expect(screen.getByText("Longest Win Run")).toBeInTheDocument();
+    expect(screen.getByText("Longest Loss Run")).toBeInTheDocument();
   });
 
   it("displays the global streaks when no killer is selected", () => {

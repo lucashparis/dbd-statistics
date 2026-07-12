@@ -55,8 +55,8 @@ export function StatisticsOverview({ killers, selectedKiller, streaks, onNavigat
           { icon: Skull, value: totals.losses, label: "Total Losses" },
           { icon: Activity, value: totals.total, label: "Total Matches" },
           { icon: TrendingUp, value: `${totals.winRate}%`, label: "Win Rate" },
-          { icon: Flame, value: longestWinStreak, label: "Best Win Streak" },
-          { icon: TrendingDown, value: longestLossStreak, label: "Worst Loss Streak" },
+          { icon: Flame, value: longestWinStreak, label: "Longest Win Run" },
+          { icon: TrendingDown, value: longestLossStreak, label: "Longest Loss Run" },
         ].map(({ icon, value, label }) => (
           <div key={label} className="card-dark p-4 flex flex-col items-center gap-1">
             <StatItem icon={icon} value={value} label={label} />
