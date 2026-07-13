@@ -41,8 +41,8 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 |-----------|-------|-------------|-----------|------------|
 | 🔴 ALTO   | 3     | 3           | 0         | 0          |
 | 🟠 MÉDIO  | 19    | 9           | 2         | 8          |
-| 🟢 BAIXO  | 13    | 2           | 5         | 6          |
-| **Total** | **35**| **14**      | **7**     | **14**     |
+| 🟢 BAIXO  | 13    | 3           | 5         | 5          |
+| **Total** | **35**| **15**      | **7**     | **13**     |
 
 > ✅ **Fase 0 (ALTO)**, **Fase 1 (gate)** e **Fase 2 (API & dados)** fechadas.
 > ✅ **M1 (auth) e M17/M18 (contadores) resolvidos pelo refactor.** Gate atual: `lint` ✅ · `test` ✅ (272) · `tsc --noEmit` ✅ (0 erros) · `build` ✅.
@@ -214,8 +214,20 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Problema:** nada rodava `tsc --noEmit`, `eslint`, `vitest`, `next build` automaticamente. **Prova viva:** a regressão de tipos em **M19** passou despercebida justamente por não haver CI.
 - **Feito (2026-07-12):** workflow `ci.yml` em push/PR para `master`: install (`npm ci`) → `prisma generate` → **typecheck** → lint → test → build. Roda em Node 20, com env dummy (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_SECRET`) — CI não toca DB real. **Validado localmente:** os 4 passos passam (build compila todas as rotas como dinâmicas).
 - **Falta (manual, no GitHub — não dá pra fazer via código):** habilitar **branch protection** em `master` e marcar o job `verify` como **required check**. Só então um merge vermelho fica bloqueado (crítico porque o deploy é automático no merge).
+- **Tentativa (2026-07-12):** não é possível executar daqui — `gh` CLI **não está instalado** (bash e PowerShell) e não há token de API no ambiente. Fica como ação humana. Comandos prontos abaixo (repo `lucashparis/dbd-statistics`; o check aparece na UI como o **display name** do job: **"Typecheck · Lint · Test · Build"**).
+  - **UI:** Settings → Branches → Add branch ruleset/protection rule → Branch name pattern `master` → marcar *Require status checks to pass before merging* → buscar e adicionar **"Typecheck · Lint · Test · Build"** → (opcional) *Require branches to be up to date* → Save.
+  - **`gh` (se instalar):**
+    ```bash
+    gh api -X PUT repos/lucashparis/dbd-statistics/branches/master/protection \
+      -H "Accept: application/vnd.github+json" \
+      -F "required_status_checks[strict]=true" \
+      -F "required_status_checks[contexts][]=Typecheck · Lint · Test · Build" \
+      -F "enforce_admins=true" \
+      -F "required_pull_request_reviews=null" \
+      -F "restrictions=null"
+    ```
 - **DoD:** workflow verde em um PR; merge bloqueado se falhar.
-- **Status:** 🟡 Parcial — workflow pronto e validado; pendente o toggle de branch protection.
+- **Status:** 🟡 Parcial — workflow pronto e validado; toggle de branch protection **pendente (ação humana no GitHub)**.
 
 ---
 
@@ -288,13 +300,13 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Correção:** render condicional do fallback quando `imageUrl` vazio, em vez de `src=""`.
 - **Status:** 🟡 Parcial — alvo original resolvido; **recorrência** no `KillerDetailPanel` a corrigir.
 
-### ⬜ B13 — README/CLAUDE.md desatualizados (pioraram com o refactor)
+### ✅ B13 — README/CLAUDE.md desatualizados (pioraram com o refactor)
 - **Arquivos:** `README.md`, `CLAUDE.md`
-- **Situação (verificada):** ambos descrevem o app **antigo**:
-  - `README.md`: "Next.js 15", "42 killers", `page.tsx` como root, "optimistic feedback"; **sem** menção a auth/login, Teams, Streaks, histórico, dashboard.
-  - `CLAUDE.md`: schema do `Killer` **com `wins`/`losses`** (removidos!), "42 killers", `force-dynamic` em `page.tsx`, "optimistic updates" em `useKillers`, só a API de killers.
-- **Correção:** atualizar README e `CLAUDE.md` para: Next 16, auth/multiusuário, schema derivado de `Match`, novas rotas (players/teams/streaks/history/signup), páginas (login/signup/dashboard). Registrar a ADR de **M17** no `CLAUDE.md`.
-- **Status:** ⬜ Pendente. **(Importante: o `CLAUDE.md` guia agentes — schema errado induz erro.)**
+- **Situação (original):** ambos descreviam o app **antigo** — `README.md` "Next.js 15", "42 killers", `page.tsx` como root, "optimistic feedback", sem auth/Teams/Streaks/histórico; `CLAUDE.md` com schema do `Killer` **com `wins`/`losses`** (removidos!), "42 killers", `force-dynamic` em `page.tsx`, "optimistic updates" em `useKillers`, só a API de killers.
+- **Feito (2026-07-12):** ambos reescritos contra o código atual:
+  - **`CLAUDE.md`:** Next 16 + React 19 + NextAuth v5 + Zod 4; seção de auth (`auth.ts`/`auth.config.ts`/`proxy.ts`); server/client split em `dashboard/page.tsx` + `page.client.tsx`; **todos** os models do schema; tabela de API completa (players/teams/streaks/history/stats/signup/auth) com nota de `401`/scoping por `session.user.id`; hooks (7) e libs (`killers.ts`, `api.ts`, `streak.ts`, `teams.ts`, `auth-*`); seção de cache (`unstable_cache`/`revalidateTag` 2-arg); env vars; CI; "44 killers". Corrigido "optimistic" → **pessimista/server-confirmed** (fecha o lado-doc do **B2**). **ADR de M17 registrada** ("`Match` é fonte única; não reintroduzir contadores").
+  - **`README.md`:** stack Next 16/React 19/NextAuth/Zod/Vitest; setup com `AUTH_SECRET`/`DATABASE_URL_UNPOOLED`; features de auth/players/teams/streaks/history; estrutura de projeto real; seção de CI.
+- **Status:** ✅ Concluído (2026-07-12). *Nota:* B2 (doc-side) resolvido junto; B11 (nomes PT no seed) referenciado como exceção conhecida no `CLAUDE.md`, mas **o seed em si segue pendente**.
 
 ---
 
@@ -321,7 +333,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | I1 | `reactCompiler: true` no top-level | ✅ **Correto no Next 16** (estável). Nenhuma ação. |
 | I2 | Injeção (SQL/NoSQL/cmd) | ✅ Sem achados — Prisma parametrizado em todas as rotas novas (players/teams/streaks); sem SQL cru. Manter. |
 | I3 | XSS | ✅ Sem achados — sem `dangerouslySetInnerHTML`. Manter. |
-| I4 | Secrets | ✅ `.env` ignorado. ⚠️ **Novo:** o refactor exige `AUTH_SECRET` (NextAuth) e `DATABASE_URL_UNPOOLED` (schema) — garantir que estão no vault/deploy e no `.env.example`. |
+| I4 | Secrets | ✅ **Resolvido (código/repo):** `.env` ignorado; `.env.example` já documenta `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_SECRET` (com hint `npx auth secret`) e `SEED_DEFAULT_PASSWORD`. Ambas as vars são **consumidas**: `DATABASE_URL_UNPOOLED` via `directUrl` no `schema.prisma`; `AUTH_SECRET` auto-lido pelo NextAuth v5. Documentado também no README/CLAUDE (B13). ⚠️ **Resíduo humano (ops):** garantir os valores reais no vault/deploy — fora do alcance do código. |
 | I5 | Arquitetura de monorepo | **N/A** — app única. |
 | I6 | PII: nomes/nicks reais no Team | ✅ **Resolvido pelo redesign** — nomes não são mais hardcoded no source; são dados por-usuário atrás de auth. *Nota LGPD:* como agora é dado de usuário em base real, tratar retenção/anonimização é decisão de produto (revisão humana se a base sair do ambiente). |
 | I7 | 3 famílias de fonte | ✅ **JetBrains Mono confirmada em uso** (`KillerRankingList` usa `font-mono`; carregada em `layout.tsx`). Manter as 3 fontes. |
@@ -340,4 +352,4 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 ---
 
 _Última atualização: 2026-07-12 — revisão completa contra o código atual pós-refactor (auth + multiusuário + Match como fonte única)._
-_Progresso: 14/35 concluídos, 7/35 parciais, 14/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ · `test` ✅ (272) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0, 1 e 2 concluídas (falta habilitar branch protection no GitHub — M16)._
+_Progresso: 15/35 concluídos, 7/35 parciais, 13/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ · `test` ✅ (272) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0, 1 e 2 concluídas; B13 (docs) + I4 (env) fechados. Falta habilitar branch protection no GitHub — M16 (ação humana)._
