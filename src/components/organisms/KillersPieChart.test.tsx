@@ -93,4 +93,41 @@ describe("KillersPieChart", () => {
     );
     expect(screen.getByText(/no match data yet/i)).toBeTruthy();
   });
+
+  it("exposes the chart as an image with a textual data summary", () => {
+    render(<KillersPieChart killers={mockKillers} mode="appearances" />);
+    const chart = screen.getByRole("img", { name: /match distribution/i });
+    expect(chart.getAttribute("aria-label")).toContain("Trapper 8");
+    expect(chart.getAttribute("aria-label")).toContain("Wraith 9");
+  });
+
+  it("labels the win/loss chart with its wins and losses", () => {
+    render(
+      <KillersPieChart
+        killers={mockKillers}
+        mode="winloss"
+        selectedKiller={mockKillers[0]}
+      />
+    );
+    expect(
+      screen.getByRole("img", { name: /win\/loss distribution for trapper/i })
+    ).toBeTruthy();
+  });
+
+  it("aggregates killers beyond the palette into an 'Other' slice", () => {
+    const many: KillerStats[] = Array.from({ length: 10 }, (_, i) => ({
+      ...mockKillers[0],
+      id: i + 1,
+      name: `Killer ${i + 1}`,
+      total: 20 - i,
+      wins: 20 - i,
+      losses: 0,
+    }));
+    render(<KillersPieChart killers={many} mode="appearances" />);
+
+    expect(screen.getByText("Other")).toBeTruthy();
+    expect(screen.getByText("Killer 1")).toBeTruthy();
+    expect(screen.queryByText("Killer 9")).toBeNull();
+    expect(screen.queryByText("Killer 10")).toBeNull();
+  });
 });

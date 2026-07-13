@@ -11,6 +11,12 @@ interface KillerSearchInputProps {
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
   className?: string;
+  ariaLabel?: string;
+  role?: "combobox";
+  ariaExpanded?: boolean;
+  ariaControls?: string;
+  ariaActiveDescendant?: string;
+  ariaAutoComplete?: "list" | "none";
 }
 
 export function KillerSearchInput({
@@ -20,6 +26,12 @@ export function KillerSearchInput({
   onKeyDown,
   placeholder = "Search killers...",
   className,
+  ariaLabel = "Search killers",
+  role,
+  ariaExpanded,
+  ariaControls,
+  ariaActiveDescendant,
+  ariaAutoComplete,
 }: KillerSearchInputProps) {
   return (
     <div className={cn("relative", className)}>
@@ -33,6 +45,12 @@ export function KillerSearchInput({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
+        aria-label={ariaLabel}
+        role={role}
+        aria-expanded={ariaExpanded}
+        aria-controls={ariaControls}
+        aria-activedescendant={ariaActiveDescendant}
+        aria-autocomplete={ariaAutoComplete}
         className={cn(
           "h-10 w-full rounded-lg border border-subtle bg-surface-2 pl-9 pr-8 text-sm text-white",
           "placeholder:text-muted",

@@ -68,4 +68,24 @@ describe("KillerCard", () => {
       screen.queryByLabelText("View Trapper statistics")
     ).not.toBeInTheDocument();
   });
+
+  it("exposes a visible focus ring on the clickable area", () => {
+    render(
+      <KillerCard killer={killer} {...handlers} onKillerClick={vi.fn()} />
+    );
+    const clickable = screen.getByLabelText("View Trapper statistics");
+    expect(clickable).toHaveAttribute("tabindex", "0");
+    expect(clickable.className).toContain("focus-visible:ring-blood");
+  });
+
+  it("activates onKillerClick from the keyboard", () => {
+    const onKillerClick = vi.fn();
+    render(
+      <KillerCard killer={killer} {...handlers} onKillerClick={onKillerClick} />
+    );
+    fireEvent.keyDown(screen.getByLabelText("View Trapper statistics"), {
+      key: "Enter",
+    });
+    expect(onKillerClick).toHaveBeenCalledWith(killer);
+  });
 });

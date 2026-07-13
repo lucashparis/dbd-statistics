@@ -37,6 +37,13 @@ export function KillerAutocomplete({
   placeholder,
   className,
 }: KillerAutocompleteProps) {
+  const baseId = React.useId();
+  const listboxId = `${baseId}-listbox`;
+  const optionId = (index: number) => `${baseId}-option-${index}`;
+  const listboxOpen = isOpen && suggestions.length > 0;
+  const activeDescendant =
+    listboxOpen && highlightedIndex >= 0 ? optionId(highlightedIndex) : undefined;
+
   return (
     <div ref={containerRef} className={cn("relative", className)}>
       <KillerSearchInput
@@ -45,6 +52,11 @@ export function KillerAutocomplete({
         onClear={clearSelection}
         placeholder={placeholder}
         onKeyDown={handleKeyDown}
+        role="combobox"
+        ariaAutoComplete="list"
+        ariaExpanded={listboxOpen}
+        ariaControls={listboxOpen ? listboxId : undefined}
+        ariaActiveDescendant={activeDescendant}
       />
 
       {selected && (
@@ -53,8 +65,11 @@ export function KillerAutocomplete({
         </div>
       )}
 
-      {isOpen && suggestions.length > 0 && (
-        <div
+      {listboxOpen && (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-label="Killer suggestions"
           className={cn(
             "absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto",
             "rounded-lg border border-subtle bg-surface-2 shadow-xl shadow-black/50 scrollbar-dark"
@@ -63,12 +78,13 @@ export function KillerAutocomplete({
           {suggestions.map((killer, idx) => (
             <AutocompleteOption
               key={killer.id}
+              id={optionId(idx)}
               killer={killer}
               highlighted={idx === highlightedIndex}
               onClick={selectKiller}
             />
           ))}
-        </div>
+        </ul>
       )}
 
       {isOpen && suggestions.length === 0 && query.trim() && (

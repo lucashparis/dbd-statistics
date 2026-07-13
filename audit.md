@@ -40,14 +40,15 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | Gravidade | Total | ✅ Concluído | 🟡 Parcial | ⬜ Pendente |
 |-----------|-------|-------------|-----------|------------|
 | 🔴 ALTO   | 3     | 3           | 0         | 0          |
-| 🟠 MÉDIO  | 19    | 15          | 2         | 2          |
-| 🟢 BAIXO  | 13    | 3           | 5         | 5          |
-| **Total** | **35**| **21**      | **7**     | **7**      |
+| 🟠 MÉDIO  | 19    | 18          | 1         | 0          |
+| 🟢 BAIXO  | 13    | 6           | 5         | 2          |
+| **Total** | **35**| **27**      | **6**     | **2**      |
 
-> ✅ **Fases 0 (ALTO), 1 (gate), 2 (API & dados), 3 (segurança/hardening) e 4 (Next.js & performance)** fechadas.
-> ✅ **M1/M17/M18 pelo refactor; M2 (rate limit, verificado ao vivo) + M3 (headers/CSP); M8 (boundaries) + M9 (skeleton) + M10 (imagens).** Gate atual: `lint` ✅ (0 erros) · `test` ✅ (298) · `tsc --noEmit` ✅ (0 erros) · `build` ✅.
+> ✅ **Fases 0 (ALTO), 1 (gate), 2 (API & dados), 3 (segurança/hardening), 4 (Next.js & performance) e 5 (acessibilidade AA)** fechadas.
+> ✅ **M1/M17/M18 pelo refactor; M2 (rate limit, verificado ao vivo) + M3 (headers/CSP); M8 (boundaries) + M9 (skeleton) + M10 (imagens).**
+> ✅ **Fase 5 (2026-07-13):** M12 (combobox APG) + M13 (paleta categórica distinguível + `role="img"`) + M14 (`prefers-reduced-motion`) + M15 (contraste AA) + B8 (focus ring) + B9 (label da busca) + B10 (hex→tokens). Gate atual: `lint` ✅ (0 erros) · `test` ✅ (318) · `tsc --noEmit` ✅ (0 erros).
 > ⚠️ **Passos manuais (ops/GitHub) fora do alcance do código:** (1) branch protection em `master` + `verify` como *required check* (**M16**); (2) Upstash provisionado — env vars já no deploy (**M2** ✅ pelo usuário).
-> Próximo foco sugerido: **Fase 5** (a11y: M12–M15, B8–B10) ou **N1** (React Query) para limpar B2/B3/B4 de uma vez.
+> Próximo foco sugerido: **Fase 6** (dívida técnica: B1, B2, B7, B11, B12) ou **N1** (React Query) para limpar B2/B3/B4 de uma vez.
 
 ---
 
@@ -60,7 +61,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | **2** ✅ | Robustez de API & dados | M4, M5, M6, M11 | Médio | Erros consistentes, validação zod, streaks cacheado |
 | **3** ✅ | Segurança / hardening | M2, M3 | Médio | Rate limit + headers/CSP |
 | **4** ✅ | Next.js & performance | M8, M9, M10 | Médio | Boundaries, streaming, LCP |
-| **5** | Acessibilidade (AA) | M12, M13, M14, M15, B8, B9, B10 | Médio | WCAG AA no essencial |
+| **5** ✅ | Acessibilidade (AA) | M12, M13, M14, M15, B8, B9, B10 | Médio | WCAG AA no essencial |
 | **6** | Dívida técnica & docs | B1, B2, B3, B7, B11, B13 | Médio | Limpeza + docs alinhadas ao refactor |
 | **—** | Decisões / INFO | I4, I7 | — | Registrar escolha consciente |
 
@@ -181,33 +182,30 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **DoD:** ✅ endpoint deixa de recomputar a cada request; testes do cômputo mantidos + 500 path; `build` valida a API de cache.
 - **Status:** ✅ Concluído. *Trade-off aceito:* streak pode ficar ~1 refetch atrás (stale-while-revalidate) — imaterial p/ métrica "maior sequência".
 
-### ⬜ M12 — Autocomplete sem semântica ARIA de combobox
-- **Arquivos:** `src/components/molecules/KillerSearchInput.tsx:30-42`, `src/components/organisms/KillerAutocomplete.tsx:56-72`, `src/components/molecules/AutocompleteOption.tsx`
-- **Problema:** input sem `role=combobox`/`aria-expanded`/`aria-controls`/`aria-activedescendant`; dropdown sem `role=listbox`; opções sem `role=option`/`aria-selected`.
-- **Correção:** seguir o padrão APG Combobox; ligar `aria-activedescendant` ao `highlightedIndex`.
-- **DoD:** navegação por teclado anunciada por leitor de tela; teste dos atributos.
-- **Status:** ⬜ Pendente. (Fazer junto de **B9**.)
+### ✅ M12 — Autocomplete sem semântica ARIA de combobox
+- **Arquivos:** `src/components/molecules/KillerSearchInput.tsx`, `src/components/organisms/KillerAutocomplete.tsx`, `src/components/molecules/AutocompleteOption.tsx`
+- **Feito (2026-07-13):** padrão **APG Combobox (listbox popup)** aplicado. O `input` recebeu `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, `aria-controls` (id do listbox) e `aria-activedescendant` ligado ao `highlightedIndex` — ids estáveis via `React.useId()` no `KillerAutocomplete`. O dropdown virou `<ul role="listbox">` com `aria-label`; cada opção virou `<li role="option">` com `id` e `aria-selected` (deixou de ser `<button>`, que não é filho válido de listbox nem tab-stop no padrão APG — a seleção por teclado já flui pelo handler do input). B9 (label da busca) resolvido no mesmo componente.
+- **DoD:** ✅ testes co-locados novos — `KillerAutocomplete.test.tsx` (combobox↔listbox, `aria-activedescendant` no highlight, colapso quando fechado) e `KillerSearchInput.test.tsx` (label + atributos de combobox); `AutocompleteOption.test.tsx` atualizado para `role=option`/`aria-selected`.
+- **Status:** ✅ Concluído.
 
-### 🟡 M13 — Pie chart: paleta de vermelhos e alternativa acessível
-- **Arquivo:** `src/components/organisms/KillersPieChart.tsx:20-24,81-103`
-- **Situação (verificada):** paleta `BLOOD_PALETTE` de **15 tons de vermelho** quase idênticos persiste; o `<svg>` ainda não tem `role=img`/`<title>`. **Porém** já existe uma **legenda textual** (`<ul>` com nome + cor, linhas 93-103) — uma alternativa não-visual parcial.
-- **Correção:** paleta distinguível (ou padrões/hachuras) + `role="img"`/título acessível no gráfico. Ver skill `dataviz` para paleta categórica.
-- **DoD:** segmentos distinguíveis; alternativa não-visual completa.
-- **Status:** 🟡 Parcial — legenda existe; paleta/`role` faltam. (Combina com **B10**.)
+### ✅ M13 — Pie chart: paleta de vermelhos e alternativa acessível
+- **Arquivo:** `src/components/organisms/KillersPieChart.tsx`
+- **Feito (2026-07-13, via skill `dataviz`):** `BLOOD_PALETTE` (15 vermelhos quase idênticos) substituída pela **paleta categórica de 8 hues** da referência do `dataviz` (blue/aqua/yellow/green/violet/red/magenta/orange, steps para superfície dark), como **tokens** (`--color-chart-1..8`). Validada com `validate_palette.js` contra a superfície real `#1C1C1E`: banda de luminância, chroma e contraste **PASS**; separação CVD no *floor band* (ΔE 10.3) — legalizada pela **codificação secundária** já presente (legenda textual + gaps `paddingAngle`). Como paleta categórica não cicla, o modo "appearances" passou a **top-7 + "Other"** (agregado) em vez de fatiar 15 (15 fatias são indistinguíveis por princípio). Gráfico ganhou `role="img"` + `aria-label` com o **resumo textual completo** dos dados (nome + valor) — alternativa não-visual completa. Legenda mantida.
+- **DoD:** ✅ segmentos distinguíveis; `role="img"` com sumário; testes (`role=img` + label, agregação "Other" quando >8, winloss). *Resíduo aceito:* CVD em floor band coberto por legenda (regra do `dataviz`); paleta é multi-hue (não mais só vermelho) — o tema horror fica na superfície/acentos ao redor.
+- **Status:** ✅ Concluído (fecha **B10** junto).
+- ⚠️ *Verificação visual pendente (não bloqueante):* eyeball no browser autenticado — `fill="var(--color-chart-*)"` em SVG depende de resolução de custom property em atributo de apresentação (suportado em browsers modernos; happy-dom não valida cor).
 
-### ⬜ M14 — Sem `prefers-reduced-motion`
-- **Arquivo:** `src/app/globals.css` (`pulseRing` infinito na `.player-avatar-ring:162`, `scroll-behavior: smooth:57`, `fadeInUp`, `shimmerBlood`)
-- **Problema:** animações rodam sem opção de reduzir; `pulseRing` é `infinite`.
-- **Correção:** `@media (prefers-reduced-motion: reduce)` desativando/atenuando animações e o scroll suave.
-- **DoD:** com reduced-motion no SO, animações param.
-- **Status:** ⬜ Pendente.
+### ✅ M14 — Sem `prefers-reduced-motion`
+- **Arquivo:** `src/app/globals.css`
+- **Feito (2026-07-13):** bloco global `@media (prefers-reduced-motion: reduce)` que reduz `animation-duration`/`transition-duration` para `0.01ms`, força `animation-iteration-count: 1` (mata o `pulseRing` infinito) e `scroll-behavior: auto` (no `html` e no reset universal). Atenua também `fadeInUp`/`shimmerBlood`/`card-hover` sem removê-las para quem não pediu redução.
+- **DoD:** ✅ com reduced-motion no SO, animações efetivamente param. (CSS puro — não testável em unit; baseline: "não testar CSS".)
+- **Status:** ✅ Concluído.
 
-### ⬜ M15 — Contraste `text-muted` abaixo de WCAG AA
-- **Arquivo:** `src/app/globals.css:36`
-- **Problema:** `--color-muted: #636366` sobre `--color-void: #0A0A0A` ≈ **3.3:1** (< 4.5:1), usado em muito texto secundário em `text-xs`.
-- **Correção:** clarear o token p/ texto (~`#8e8e93`) ou reservar `#636366` só para não-textuais.
-- **DoD:** contraste ≥ 4.5:1 no texto secundário.
-- **Status:** ⬜ Pendente.
+### ✅ M15 — Contraste `text-muted` abaixo de WCAG AA
+- **Arquivo:** `src/app/globals.css`
+- **Feito (2026-07-13):** `--color-muted` clareado de `#636366` (≈3.3:1) para **`#8e8e93`** — **≈6.1:1** sobre `--color-void` `#0A0A0A` (passa AA para texto normal e AAA para texto grande). Um único token, então todo texto secundário em `text-muted` sobe de contraste de uma vez; usos não-textuais (bordas/ícones) ficam levemente mais claros, sem prejuízo.
+- **DoD:** ✅ contraste ≥ 4.5:1 no texto secundário (calculado).
+- **Status:** ✅ Concluído.
 
 ### 🟡 M16 — Sem CI/CD
 - **Arquivo:** `.github/workflows/ci.yml` (criado)
@@ -273,20 +271,22 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Correção:** delay relativo à página **ou** teto (ex.: `Math.min(index, 8) * 40`).
 - **Status:** 🟡 Parcial — severidade reduzida.
 
-### ⬜ B8 — `KillerCard` clicável (role=button) sem foco visível
-- **Arquivo:** `src/components/organisms/KillerCard.tsx:43-58` — tem `role=button`/`tabIndex`/`onKeyDown`, mas **sem** `focus-visible` ring.
-- **Correção:** adicionar `focus-visible` ring com token de cor.
-- **Status:** ⬜ Pendente. (Fase 5 / a11y.)
+### ✅ B8 — `KillerCard` clicável (role=button) sem foco visível
+- **Arquivo:** `src/components/organisms/KillerCard.tsx`
+- **Feito (2026-07-13):** área clicável ganhou `focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blood` (+ `focus-visible:outline-none`). Ring **inset** de propósito — o `<article>` é `overflow-hidden` e um ring externo seria cortado. Token de cor (`ring-blood`), aplicado só quando `onKillerClick` existe.
+- **DoD:** ✅ teste co-locado — ring presente na área clicável + ativação por teclado (Enter).
+- **Status:** ✅ Concluído.
 
-### ⬜ B9 — Input de busca sem label acessível
-- **Arquivo:** `src/components/molecules/KillerSearchInput.tsx:30` — o `<input>` não tem `aria-label`/`<label>` (só o botão de limpar tem).
-- **Correção:** `aria-label` ou `<label>` visualmente oculto.
-- **Status:** ⬜ Pendente. (Fazer junto de **M12**.)
+### ✅ B9 — Input de busca sem label acessível
+- **Arquivo:** `src/components/molecules/KillerSearchInput.tsx`
+- **Feito (2026-07-13):** `<input>` recebeu `aria-label` (prop `ariaLabel`, default `"Search killers"`, override por chamador). Feito junto de **M12** no mesmo componente.
+- **DoD:** ✅ teste — `getByLabelText("Search killers")` e override.
+- **Status:** ✅ Concluído.
 
-### ⬜ B10 — Hex cru em componente/inline
-- **Arquivo:** `src/components/organisms/KillersPieChart.tsx:56,100` (`#10B981`, `#9ca3af`) + `BLOOD_PALETTE` (20-24) — viola "no raw color values".
-- **Correção:** mover para tokens/CSS vars.
-- **Status:** ⬜ Pendente. (Fazer junto de **M13**.)
+### ✅ B10 — Hex cru em componente/inline
+- **Arquivo:** `src/components/organisms/KillersPieChart.tsx`
+- **Feito (2026-07-13, junto de M13):** todos os hex saíram do componente para tokens em `globals.css @theme` — `BLOOD_PALETTE` → `--color-chart-1..8`/`--color-chart-other`; `#10B981` (win) → `--color-win`; `#9ca3af` (legenda) → classe `text-muted`. O `fill`/`backgroundColor` agora referenciam `var(--color-chart-*)`. Sobra apenas string de `var()`, não hex cru.
+- **Status:** ✅ Concluído.
 
 ### 🟡 B11 — Texto de UI em português (viola English-only)
 - **Arquivos:** `prisma/seed.ts:7,49,77,126,147,154` (ainda "Trapper (Caçador)", "Huntress (Caçadora)", "Clown (Palhaço)", "Deathslinger (Mercenário)", "Twins (Gêmeos)", "Trickster (Trapaça)").
@@ -351,5 +351,5 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 
 ---
 
-_Última atualização: 2026-07-12 — revisão completa contra o código atual pós-refactor (auth + multiusuário + Match como fonte única)._
-_Progresso: 21/35 concluídos, 7/35 parciais, 7/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ · `test` ✅ (298) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0–4 concluídas; B13 (docs) + I4 (env) fechados. Ação humana pendente: branch protection no GitHub (M16)._
+_Última atualização: 2026-07-13 — Fase 5 (acessibilidade AA) concluída: M12, M13, M14, M15, B8, B9, B10._
+_Progresso: 27/35 concluídos, 6/35 parciais, 2/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ (0 erros) · `test` ✅ (318) · `tsc --noEmit` ✅ (0 erros). Fases 0–5 concluídas; B13 (docs) + I4 (env) fechados. Pendentes: B1, B2 (BAIXO). Ação humana pendente: branch protection no GitHub (M16)._

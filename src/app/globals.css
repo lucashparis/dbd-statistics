@@ -33,8 +33,20 @@
   --color-surface: #1C1C1E;
   --color-surface-2: #242426;
   --color-surface-3: #2c2c2e;
-  --color-muted: #636366;
+  --color-muted: #8e8e93;
   --color-subtle: #3a3a3c;
+
+  --color-win: #10b981;
+
+  --color-chart-1: #3987e5;
+  --color-chart-2: #199e70;
+  --color-chart-3: #c98500;
+  --color-chart-4: #008300;
+  --color-chart-5: #9085e9;
+  --color-chart-6: #e66767;
+  --color-chart-7: #d55181;
+  --color-chart-8: #d95926;
+  --color-chart-other: #8e8e93;
 
   --font-display: "Cinzel", serif;
   --font-body: "Geist", sans-serif;
@@ -166,5 +178,20 @@
     border-color: var(--color-blood);
     box-shadow: 0 0 20px var(--color-blood-glow), 0 0 40px rgba(220, 20, 60, 0.1), 0 12px 40px rgba(0, 0, 0, 0.5);
     transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -7,12 +7,15 @@ interface AutocompleteOptionProps {
   killer: KillerStats;
   highlighted?: boolean;
   onClick: (killer: KillerStats) => void;
+  id?: string;
 }
 
-export function AutocompleteOption({ killer, highlighted = false, onClick }: AutocompleteOptionProps) {
+export function AutocompleteOption({ killer, highlighted = false, onClick, id }: AutocompleteOptionProps) {
   return (
-    <button
-      type="button"
+    <li
+      id={id}
+      role="option"
+      aria-selected={highlighted}
       onClick={() => onClick(killer)}
       className={cn(
         "flex w-full items-center gap-3 px-3 py-2 text-left transition-colors duration-150 cursor-pointer",
@@ -29,6 +32,6 @@ export function AutocompleteOption({ killer, highlighted = false, onClick }: Aut
         />
       </div>
       <span className="truncate text-sm">{killer.name}</span>
-    </button>
+    </li>
   );
 }

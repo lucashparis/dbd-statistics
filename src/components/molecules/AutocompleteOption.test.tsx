@@ -29,15 +29,24 @@ describe("AutocompleteOption", () => {
     expect(screen.getByAltText("Huntress")).toBeInTheDocument();
   });
 
+  it("is exposed as a listbox option", () => {
+    render(<AutocompleteOption killer={killer} id="option-7" onClick={() => {}} />);
+    const option = screen.getByRole("option");
+    expect(option).toHaveAttribute("id", "option-7");
+    expect(option).toHaveAttribute("aria-selected", "false");
+  });
+
   it("calls onClick with the killer when pressed", async () => {
     const onClick = vi.fn();
     render(<AutocompleteOption killer={killer} onClick={onClick} />);
-    await userEvent.click(screen.getByRole("button"));
+    await userEvent.click(screen.getByRole("option"));
     expect(onClick).toHaveBeenCalledWith(killer);
   });
 
   it("reflects the highlighted state", () => {
     render(<AutocompleteOption killer={killer} highlighted onClick={() => {}} />);
-    expect(screen.getByRole("button").className).toContain("bg-surface-3");
+    const option = screen.getByRole("option");
+    expect(option).toHaveAttribute("aria-selected", "true");
+    expect(option.className).toContain("bg-surface-3");
   });
 });

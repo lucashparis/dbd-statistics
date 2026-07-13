@@ -43,7 +43,8 @@ export function KillerCard({
       <div
         className={cn(
           "relative aspect-3/4",
-          onKillerClick && "cursor-pointer"
+          onKillerClick &&
+            "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blood"
         )}
         onClick={() => onKillerClick?.(killer)}
         role={onKillerClick ? "button" : undefined}
