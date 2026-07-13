@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
@@ -13,6 +14,14 @@ const nextConfig: NextConfig = {
         hostname: "dbdinfo.com",
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders(),
+      },
+    ];
   },
 };
 

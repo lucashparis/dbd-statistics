@@ -40,14 +40,14 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | Gravidade | Total | ✅ Concluído | 🟡 Parcial | ⬜ Pendente |
 |-----------|-------|-------------|-----------|------------|
 | 🔴 ALTO   | 3     | 3           | 0         | 0          |
-| 🟠 MÉDIO  | 19    | 9           | 2         | 8          |
+| 🟠 MÉDIO  | 19    | 12          | 2         | 5          |
 | 🟢 BAIXO  | 13    | 3           | 5         | 5          |
-| **Total** | **35**| **15**      | **7**     | **13**     |
+| **Total** | **35**| **18**      | **7**     | **10**     |
 
-> ✅ **Fase 0 (ALTO)**, **Fase 1 (gate)** e **Fase 2 (API & dados)** fechadas.
-> ✅ **M1 (auth) e M17/M18 (contadores) resolvidos pelo refactor.** Gate atual: `lint` ✅ · `test` ✅ (272) · `tsc --noEmit` ✅ (0 erros) · `build` ✅.
-> ⚠️ **Falta 1 passo manual no GitHub:** habilitar branch protection em `master` + marcar o job `verify` como *required check*. Como o deploy é automático no merge, sem isso o CI roda mas **não bloqueia** um merge vermelho.
-> Próximo foco sugerido: **Fase 3** (M2 rate limit, M3 headers/CSP) ou o item novo **N1** (React Query) para limpar B2/B3/B4 de uma vez.
+> ✅ **Fases 0 (ALTO), 1 (gate), 2 (API & dados) e 3 (segurança/hardening)** fechadas.
+> ✅ **M1 (auth), M17/M18 (contadores) pelo refactor; M2 (rate limit) + M3 (headers/CSP) implementados.** Gate atual: `lint` ✅ · `test` ✅ (283) · `tsc --noEmit` ✅ (0 erros) · `build` ✅.
+> ⚠️ **Passos manuais (ops/GitHub) fora do alcance do código:** (1) branch protection em `master` + `verify` como *required check* (**M16**); (2) provisionar Upstash + 2 env vars no deploy para o rate limit valer em prod (**M2**).
+> Próximo foco sugerido: **Fase 4** (M8 error boundary, M9 loading/streaming, M10 next/image) ou **Fase 5** (a11y) — ou **N1** (React Query) para limpar B2/B3/B4 de uma vez.
 
 ---
 
@@ -58,7 +58,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | **0** ✅ | Quick wins — zerar ALTO | A1, A2, A3 | Baixo | Sem crashes / sem corrupção de dados |
 | **1** ✅ | Reparar gate de qualidade | M19, M16, B5, B6 | Baixo | tsc/lint/test verdes; CI criado (falta só branch protection) |
 | **2** ✅ | Robustez de API & dados | M4, M5, M6, M11 | Médio | Erros consistentes, validação zod, streaks cacheado |
-| **3** | Segurança / hardening | M2, M3 | Médio | Rate limit + headers/CSP |
+| **3** ✅ | Segurança / hardening | M2, M3 | Médio | Rate limit + headers/CSP |
 | **4** | Next.js & performance | M8, M9, M10 | Médio | Boundaries, streaming, LCP |
 | **5** | Acessibilidade (AA) | M12, M13, M14, M15, B8, B9, B10 | Médio | WCAG AA no essencial |
 | **6** | Dívida técnica & docs | B1, B2, B3, B7, B11, B13 | Médio | Limpeza + docs alinhadas ao refactor |
@@ -138,19 +138,22 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **DoD:** `npx tsc --noEmit` limpo; `npm run test` verde; todo `src` com contraparte `.test`.
 - **Status:** ✅ Concluído (2026-07-12) — mock de `auth` tipado via `const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>)` (colapsa a sobrecarga `NextMiddleware`) em 8 arquivos; fixtures de `Match` com `userId/teamId/streakRunId`; `$transaction` com `as never`. **`tsc --noEmit` = 0 erros**, 242 testes verdes. *Resíduo (não bloqueante):* alguns atoms/templates ainda sem `.test` co-locado.
 
-### ⬜ M2 — Sem rate limiting
-- **Arquivos:** rotas de mutação; `src/proxy.ts`
-- **Problema:** `proxy.ts` só faz redirect de auth para `/dashboard`; não há rate limit. Spam de writes infla `Match` sem limite.
-- **Correção:** rate limit por IP/rota (no `proxy.ts` ou lib dedicada).
-- **DoD:** N+1 requisições rápidas → 429; teste.
-- **Status:** ⬜ Pendente.
+### ✅ M2 — Sem rate limiting
+- **Arquivos:** `src/lib/rate-limit.ts` (novo), `src/proxy.ts` (aplica), `.env.example`/README/`CLAUDE.md` (env).
+- **Decisão de deploy (2026-07-12):** **serverless** (Vercel/etc.) → in-memory é inútil (instâncias efêmeras). Adotado **store externo Upstash Redis** (`@upstash/ratelimit` + `@upstash/redis`, REST, edge-compatível).
+- **Feito:** `enforceRateLimit(identifier)` — sliding window **20 req / 10 s**, prefixo `dbd:rl`. Aplicado no `proxy.ts` a **requisições não-GET** em `/api/*` (o vetor de abuso = writes; reads não pagam a ida ao Redis), com chave `user:<id>` quando autenticado ou `ip:<x-forwarded-for>` senão (protege signup/login por IP). Resposta `429` com `Retry-After` + `X-RateLimit-*`. **Fail-open**: sem `UPSTASH_REDIS_REST_URL`/`_TOKEN` o limiter é `null` e tudo passa (dev/CI/local não quebram). Matcher do proxy expandido para `/api/:path*`.
+- **DoD:** ✅ teste co-locado (`rate-limit.test.ts`) — `429` com headers, `Retry-After` nunca negativo, e fail-open quando não configurado. `tsc`/`lint`/`test` (283)/`build` verdes; proxy empacota `@upstash` no bundle de middleware.
+- **Verificação ao vivo (2026-07-12):** Upstash provisionado + creds no `.env` local; `next start` + 25 POSTs rápidos em `/api/signup` → sequência **20×`400` (passam o limiter, barrados pelo zod) + 5×`429`**. Janela de 20/10s confirmada end-to-end contra o Redis real.
+- **Status:** ✅ Concluído e **verificado ao vivo**. ⚠️ **Resíduo humano (ops):** as mesmas 2 env vars (`UPSTASH_REDIS_REST_URL`/`_TOKEN`) precisam ser setadas **no ambiente de deploy** (Vercel) para o rate limit valer em produção — o `.env` local não vai pro deploy.
 
-### ⬜ M3 — Sem headers de segurança / CSP
-- **Arquivos:** `next.config.ts` (sem `headers()`), `src/proxy.ts` (não injeta headers).
-- **Problema:** falta CSP, `frame-ancestors`/X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS.
-- **Correção:** `headers()` no `next.config.ts` (ou no `proxy.ts`) com o conjunto padrão de hardening.
-- **DoD:** headers presentes na resposta (`curl -I`).
-- **Status:** ⬜ Pendente.
+### ✅ M3 — Sem headers de segurança / CSP
+- **Arquivos:** `src/lib/security-headers.ts` (novo, testável), `next.config.ts` (`async headers()`).
+- **Feito (2026-07-12):** conjunto de hardening extraído para `securityHeaders()` em `src/lib/` (mantém o `next.config.ts` fino e a lógica testável) e aplicado a `/:path*`:
+  - **CSP** — `default-src 'self'`; `frame-ancestors 'none'`; `object-src 'none'`; `base-uri`/`form-action 'self'`; `img-src` com os hosts allowlistados (wikia/dbdinfo) + `blob:`/`data:`; `upgrade-insecure-requests`. `script-src`/`style-src` com `'unsafe-inline'` (Next hidrata inline). Relaxa `'unsafe-eval'`+`ws:` **só em dev** (HMR) — em prod ficam de fora.
+  - `Strict-Transport-Security` (2 anos, `includeSubDomains; preload`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (camera/microphone/geolocation desligados).
+- **DoD:** ✅ verificado **ao vivo** — `next start` + request em `/login` → `200` com os 6 headers presentes (CSP em modo prod, sem `unsafe-eval`). Teste unitário co-locado (`security-headers.test.ts`, 6 casos). `tsc`/`lint`/`build` verdes.
+- **Status:** ✅ Concluído.
+- ⚠️ *Segurança (follow-up, não bloqueante):* o `script-src` usa `'unsafe-inline'` — a forma mais forte é CSP com **nonce** por request (via `proxy.ts`), que força render dinâmico. Validar num browser real que gráficos (Recharts) e hidratação não disparam violação de CSP antes de endurecer.
 
 ### ⬜ M8 — Sem `error.tsx` / `not-found.tsx` / `global-error.tsx`
 - **Arquivos:** ausência em `src/app/`
@@ -352,4 +355,4 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 ---
 
 _Última atualização: 2026-07-12 — revisão completa contra o código atual pós-refactor (auth + multiusuário + Match como fonte única)._
-_Progresso: 15/35 concluídos, 7/35 parciais, 13/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ · `test` ✅ (272) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0, 1 e 2 concluídas; B13 (docs) + I4 (env) fechados. Falta habilitar branch protection no GitHub — M16 (ação humana)._
+_Progresso: 18/35 concluídos, 7/35 parciais, 10/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ · `test` ✅ (283) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0–3 concluídas; B13 (docs) + I4 (env) fechados. Ações humanas pendentes: branch protection no GitHub (M16) + provisionar Upstash no deploy (M2)._

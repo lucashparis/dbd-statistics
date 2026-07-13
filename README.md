@@ -39,6 +39,10 @@ DATABASE_URL_UNPOOLED="postgresql://user:password@localhost:5432/dbd_statistics"
 AUTH_SECRET="…"
 # Password for the default seeded account
 SEED_DEFAULT_PASSWORD="…"
+# Rate limiting (Upstash Redis REST) — optional; required for real rate
+# limiting on serverless. Unset = rate limiting disabled (fail-open).
+UPSTASH_REDIS_REST_URL="…"
+UPSTASH_REDIS_REST_TOKEN="…"
 ```
 
 ### 3. Install dependencies

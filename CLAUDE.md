@@ -16,7 +16,7 @@ Dead by Daylight killer statistics tracker. Authenticated users register wins an
 
 - `src/auth.config.ts` — edge-safe config (pages, `session` callback that copies `token.sub` → `session.user.id`). **No Prisma/bcrypt here** — must stay edge-compatible.
 - `src/auth.ts` — full config for the Node runtime. Credentials provider + `bcryptjs`. Exports `auth`, `signIn`, `signOut`.
-- `src/proxy.ts` — Next 16 "proxy" (formerly `middleware`). Redirects unauthenticated requests for `/dashboard` → `/login`. Matcher is scoped to `/dashboard/*`.
+- `src/proxy.ts` — Next 16 "proxy" (formerly `middleware`). Redirects unauthenticated requests for `/dashboard` → `/login`, and rate-limits write requests (non-GET) to `/api` via `enforceRateLimit` (keyed by user id, or client IP when unauthenticated). Matcher covers `/dashboard/*` and `/api/*`.
 - **Every data API route** calls `const session = await auth()` and returns `401` when there is no session. Data is scoped by `session.user.id`.
 - Pages: `/login`, `/signup` (public), `/dashboard` (protected). Root `/` is a landing page that redirects to `/dashboard` when already authenticated.
 - Account creation: `POST /api/signup` (validates with Zod, hashes with bcrypt).
@@ -52,6 +52,8 @@ Always place new components at the lowest level of abstraction that fits. Do not
 - `utils.ts` — `cn()` (clsx + tailwind-merge), `computeStats()`, `formatPercent()`.
 - `killers.ts` — `getKillersForUser()` / `getKillerForUser()`. **Derive** wins/losses from `Match` (`groupBy`/`count`) and serialize to the `Killer` shape. This is the single source of truth for win/loss counts.
 - `api.ts` — route helpers: `parseId` / `parsePage` (Zod coercion at the boundary) and `mutationError` (maps Prisma `P2003`/`P2025` → `404`, everything else → `console.error` + `500`).
+- `rate-limit.ts` — `enforceRateLimit(identifier)` (Upstash sliding window, 20/10s). **Fails open** when `UPSTASH_REDIS_REST_URL`/`_TOKEN` are unset (dev/CI/local pass through). Used by `proxy.ts`.
+- `security-headers.ts` — `securityHeaders()` / `contentSecurityPolicy(isDev)`. Consumed by `next.config.ts` `headers()`.
 - `streak.ts` / `teams.ts` — streak computation and team helpers.
 - `auth-credentials.ts` / `auth-helpers.ts` — credential validation and auth utilities.
 
@@ -170,6 +172,8 @@ DATABASE_URL="postgresql://user:password@localhost:5432/dbd_statistics"   # pool
 DATABASE_URL_UNPOOLED="postgresql://user:password@localhost:5432/dbd_statistics"  # direct — Prisma migrate/db push (schema directUrl)
 AUTH_SECRET="…"            # NextAuth secret — generate with: npx auth secret
 SEED_DEFAULT_PASSWORD="…"  # password for the default seeded account
+UPSTASH_REDIS_REST_URL="…"    # optional — rate limiting store (serverless). Unset = fail-open
+UPSTASH_REDIS_REST_TOKEN="…"  # optional — pairs with the URL above
 ```
 
 ### CI
