@@ -40,14 +40,14 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | Gravidade | Total | ✅ Concluído | 🟡 Parcial | ⬜ Pendente |
 |-----------|-------|-------------|-----------|------------|
 | 🔴 ALTO   | 3     | 3           | 0         | 0          |
-| 🟠 MÉDIO  | 19    | 12          | 2         | 5          |
+| 🟠 MÉDIO  | 19    | 15          | 2         | 2          |
 | 🟢 BAIXO  | 13    | 3           | 5         | 5          |
-| **Total** | **35**| **18**      | **7**     | **10**     |
+| **Total** | **35**| **21**      | **7**     | **7**      |
 
-> ✅ **Fases 0 (ALTO), 1 (gate), 2 (API & dados) e 3 (segurança/hardening)** fechadas.
-> ✅ **M1 (auth), M17/M18 (contadores) pelo refactor; M2 (rate limit) + M3 (headers/CSP) implementados.** Gate atual: `lint` ✅ · `test` ✅ (283) · `tsc --noEmit` ✅ (0 erros) · `build` ✅.
-> ⚠️ **Passos manuais (ops/GitHub) fora do alcance do código:** (1) branch protection em `master` + `verify` como *required check* (**M16**); (2) provisionar Upstash + 2 env vars no deploy para o rate limit valer em prod (**M2**).
-> Próximo foco sugerido: **Fase 4** (M8 error boundary, M9 loading/streaming, M10 next/image) ou **Fase 5** (a11y) — ou **N1** (React Query) para limpar B2/B3/B4 de uma vez.
+> ✅ **Fases 0 (ALTO), 1 (gate), 2 (API & dados), 3 (segurança/hardening) e 4 (Next.js & performance)** fechadas.
+> ✅ **M1/M17/M18 pelo refactor; M2 (rate limit, verificado ao vivo) + M3 (headers/CSP); M8 (boundaries) + M9 (skeleton) + M10 (imagens).** Gate atual: `lint` ✅ (0 erros) · `test` ✅ (298) · `tsc --noEmit` ✅ (0 erros) · `build` ✅.
+> ⚠️ **Passos manuais (ops/GitHub) fora do alcance do código:** (1) branch protection em `master` + `verify` como *required check* (**M16**); (2) Upstash provisionado — env vars já no deploy (**M2** ✅ pelo usuário).
+> Próximo foco sugerido: **Fase 5** (a11y: M12–M15, B8–B10) ou **N1** (React Query) para limpar B2/B3/B4 de uma vez.
 
 ---
 
@@ -59,7 +59,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | **1** ✅ | Reparar gate de qualidade | M19, M16, B5, B6 | Baixo | tsc/lint/test verdes; CI criado (falta só branch protection) |
 | **2** ✅ | Robustez de API & dados | M4, M5, M6, M11 | Médio | Erros consistentes, validação zod, streaks cacheado |
 | **3** ✅ | Segurança / hardening | M2, M3 | Médio | Rate limit + headers/CSP |
-| **4** | Next.js & performance | M8, M9, M10 | Médio | Boundaries, streaming, LCP |
+| **4** ✅ | Next.js & performance | M8, M9, M10 | Médio | Boundaries, streaming, LCP |
 | **5** | Acessibilidade (AA) | M12, M13, M14, M15, B8, B9, B10 | Médio | WCAG AA no essencial |
 | **6** | Dívida técnica & docs | B1, B2, B3, B7, B11, B13 | Médio | Limpeza + docs alinhadas ao refactor |
 | **—** | Decisões / INFO | I4, I7 | — | Registrar escolha consciente |
@@ -155,26 +155,23 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Status:** ✅ Concluído.
 - ⚠️ *Segurança (follow-up, não bloqueante):* o `script-src` usa `'unsafe-inline'` — a forma mais forte é CSP com **nonce** por request (via `proxy.ts`), que força render dinâmico. Validar num browser real que gráficos (Recharts) e hidratação não disparam violação de CSP antes de endurecer.
 
-### ⬜ M8 — Sem `error.tsx` / `not-found.tsx` / `global-error.tsx`
-- **Arquivos:** ausência em `src/app/`
-- **Problema:** qualquer throw cai na tela de erro padrão / branca, sem `reset()`. Amplifica A3.
-- **Correção:** criar `app/error.tsx` (client boundary com `reset`) e `app/not-found.tsx`.
-- **DoD:** simular erro em componente → boundary aparece com botão de retry.
-- **Status:** ⬜ Pendente.
+### ✅ M8 — Sem `error.tsx` / `not-found.tsx` / `global-error.tsx`
+- **Arquivos:** `src/app/error.tsx`, `src/app/not-found.tsx`, `src/app/global-error.tsx` (novos).
+- **Feito (2026-07-12):** três boundaries no tema dark: `error.tsx` (client, botão **Try again** → `reset()`, mostra `digest`); `not-found.tsx` (404 "Lost in the fog" + link → `/dashboard`); `global-error.tsx` (última linha de defesa; **estilos inline** porque substitui o root layout e não pode depender do `globals.css`). Sem `useEffect` (respeita a convenção do repo; o Next já loga throws — sink de observabilidade fica para quando houver Sentry/etc.).
+- **DoD:** ✅ testes co-locados (error/not-found/global-error) — heading, digest, retry chama `reset`. **Verificado ao vivo:** `next start` + GET rota inexistente → **`404`** com o HTML do "Lost in the fog"/"Back to dashboard"; RSC payload confirma `error`+`notFound` plugados no layout.
+- **Status:** ✅ Concluído (fecha a lacuna de boundary global que o A3 tinha deixado — lá o tratamento era inline no hook).
 
-### ⬜ M9 — `force-dynamic` sem `loading.tsx` / Suspense (sem streaming)
-- **Arquivo:** `src/app/dashboard/page.tsx:7` (era `src/app/page.tsx`)
-- **Problema:** `export const dynamic = "force-dynamic"` + `await getKillersForUser(...)` bloqueiam o 1º paint; sem skeleton/loading no App Router.
-- **Correção:** adicionar `app/dashboard/loading.tsx` e/ou `<Suspense>`. Avaliar `revalidate` se a frescura permitir.
-- **DoD:** skeleton visível durante o carregamento inicial do dashboard.
-- **Status:** ⬜ Pendente.
+### ✅ M9 — `force-dynamic` sem `loading.tsx` / Suspense (sem streaming)
+- **Arquivos:** `src/app/dashboard/loading.tsx` (novo), `src/components/templates/DashboardSkeleton.tsx` (novo), `src/components/atoms/Skeleton.tsx` (novo, reutilizável).
+- **Feito (2026-07-12, com foco em skeleton conforme pedido):** `loading.tsx` vira o fallback de Suspense automático do App Router enquanto `dashboard/page.tsx` faz `await getKillersForUser(...)`. Renderiza `DashboardSkeleton` — um esqueleto **que espelha a tela real** (header + 5 abas + busca + grade de 12 cards), montado sobre um átomo `Skeleton` (`animate-pulse`/`bg-surface-3`, `aria-hidden`), com `role="status"`/`aria-label="Loading dashboard"`. Não força dinâmico extra (o `dashboard` já era `force-dynamic`).
+- **DoD:** ✅ skeleton entregue e testado (Skeleton, DashboardSkeleton, loading — `role=status` + ≥12 placeholders). Wiring validado pelo `build`. *Nota:* o "flash" do skeleton só é perceptível com rede/DB lentos; em DB local rápido ele aparece por milissegundos.
+- **Status:** ✅ Concluído.
 
-### ⬜ M10 — `next/image` com `unoptimized`
-- **Arquivos:** `src/components/atoms/KillerImage.tsx:29`, `src/components/molecules/AutocompleteOption.tsx:30` (ambos com `unoptimized`). `MatchItem.tsx` e `KillerDetailPanel.tsx` **não** usam — inconsistente.
-- **Problema:** PNGs full-size da wikia servidos sem resize/webp.
-- **Correção:** remover `unoptimized` (hosts já em `remotePatterns`); padronizar todos os `<Image>`.
-- **DoD:** imagens via `/_next/image`; LCP melhora perceptível.
-- **Status:** ⬜ Pendente.
+### ✅ M10 — `next/image` com `unoptimized`
+- **Arquivos:** `src/components/atoms/KillerImage.tsx`, `src/components/molecules/AutocompleteOption.tsx`.
+- **Feito (2026-07-12):** removido `unoptimized` dos dois `<Image>` — agora todos passam pelo otimizador (`/_next/image`), consistente com `MatchItem`/`KillerDetailPanel` que já não usavam. Hosts já estavam em `remotePatterns`; `sizes` já presente para gerar `srcset`. Adicionados testes co-locados (KillerImage, AutocompleteOption — ambos antes sem `.test`).
+- **DoD:** ✅ `build` compila com otimização ativa; imagens servidas via `/_next/image` em prod. *Verificação de LCP visual fica para inspeção no browser autenticado.*
+- **Status:** ✅ Concluído. ⚠️ *Trade-off (custo):* na Vercel, otimização de imagem tem cota/custo por transformação — o `unoptimized` provavelmente existia para evitá-lo. Se o custo pesar, alternativa é um loader próprio ou cache/CDN das imagens da wikia.
 
 ### ✅ M11 — `/api/stats/streaks` carrega todos os `Match` em memória por request
 - **Arquivo:** `src/app/api/stats/streaks/route.ts` + `revalidateTag` nas rotas de mutação.
@@ -355,4 +352,4 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 ---
 
 _Última atualização: 2026-07-12 — revisão completa contra o código atual pós-refactor (auth + multiusuário + Match como fonte única)._
-_Progresso: 18/35 concluídos, 7/35 parciais, 10/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ · `test` ✅ (283) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0–3 concluídas; B13 (docs) + I4 (env) fechados. Ações humanas pendentes: branch protection no GitHub (M16) + provisionar Upstash no deploy (M2)._
+_Progresso: 21/35 concluídos, 7/35 parciais, 7/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ · `test` ✅ (298) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0–4 concluídas; B13 (docs) + I4 (env) fechados. Ação humana pendente: branch protection no GitHub (M16)._

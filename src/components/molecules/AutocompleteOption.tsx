@@ -26,7 +26,6 @@ export function AutocompleteOption({ killer, highlighted = false, onClick }: Aut
           fill
           className="object-cover object-top"
           sizes="24px"
-          unoptimized
         />
       </div>
       <span className="truncate text-sm">{killer.name}</span>
