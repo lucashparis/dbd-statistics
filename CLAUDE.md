@@ -234,8 +234,28 @@ All user-facing text must be in **English** — labels, headings, descriptions, 
 
 ---
 
+## Technical audit & prevention
+
+This repo ships the **`technical-audit-next`** skill (`.claude/skills/technical-audit-next/SKILL.md`). It has two modes:
+
+- **Prevention (always on):** every new implementation — API route, Server Action, hook, component, schema/config change — must satisfy the skill's *Baseline de Prevenção* **before** it's delivered. Those rules are the distilled failure classes already catalogued in [audit.md](audit.md); breaking one reopens a known bug. Write the code correct from the start — don't ship then patch. Only surface a rule inline (1 line) when a conscious trade-off prevents satisfying it.
+- **Audit (on demand):** when asked to "audit / revisar o repo / find problems", run the skill's adversarial protocol and deliver the findings table (`ID | Gravidade | Categoria | Arquivo:linha | Problema | Impacto | Correção`) + executive summary + top-5 + quick wins.
+
+Non-negotiable prevention checklist (see the skill for the full list):
+
+- **API/Actions:** `await auth()` → `401` first; validate at the boundary with Zod (`parseId`/`parsePage`, body schema) → `400`; thin handler → `mutationError` in `catch` (never swallow, never empty `catch`, never return `200` on error).
+- **Data:** `Match` stays the single source of truth (no `wins`/`losses` columns); set `userId` on every `Match`; related writes go in `$transaction`; every `Match` mutation calls `revalidateTag("streaks:" + userId, "max")` (**2 args** — 1 arg breaks the Next 16 build); never load a whole table per request.
+- **Next.js:** keep `'use client'` low; no secret/server-only import in client bundles; no sensitive `NEXT_PUBLIC_*`; new dynamic routes get `loading.tsx` (skeleton) + `error.tsx`/`not-found.tsx`; no fetch waterfalls; no browser API on the server.
+- **Client fetch:** always check `res.ok`, expose `error` + `retry`; hooks stay pessimistic (docs and code in agreement).
+- **Security:** headers/CSP + rate limiting are baseline (`security-headers.ts`, `proxy.ts`) — just ensure new surfaces are covered; no `dangerouslySetInnerHTML` unsanitized; no raw SQL; secrets in `.env`/vault only.
+- **Perf/a11y/style:** `next/image` optimized with `sizes` and never `src=""`; combobox follows APG ARIA; inputs labelled; `focus-visible` rings; charts `role="img"` + textual alt; `prefers-reduced-motion` guard; text contrast ≥ 4.5:1; color tokens (no raw hex); UI text in English.
+- **Gate:** co-located tests are mandatory; `npm run test` · `npm run lint` · `npx tsc --noEmit` all green before delivery.
+
+---
+
 ## Key conventions
 
+- **Apply the `technical-audit-next` prevention baseline to every new implementation** — see the "Technical audit & prevention" section. New code must not reintroduce the catalogued failure classes (auth, Zod at the boundary, error handling, boundaries/cache, security, a11y, tests).
 - **Tests are mandatory** — every new feature, hook, utility, component, or API route must ship with a co-located `.test.ts` / `.test.tsx` file. See the Testing section for details.
 - **No comments** unless the WHY is non-obvious. Well-named identifiers are enough.
 - **Guard clauses over else** — return or throw early to handle error/edge cases first; never nest the happy path inside an `else` block. This keeps code flat and close to the left margin.
