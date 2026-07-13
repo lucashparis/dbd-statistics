@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { parsePage } from "@/lib/api";
 
 const LIMIT = 10;
 
@@ -13,8 +14,7 @@ export async function GET(req: Request) {
   try {
     const userId = session.user.id;
     const { searchParams } = new URL(req.url);
-    const parsed = Number.parseInt(searchParams.get("page") ?? "1", 10);
-    const page = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    const page = parsePage(searchParams.get("page"));
     const skip = (page - 1) * LIMIT;
 
     const [matches, total] = await Promise.all([

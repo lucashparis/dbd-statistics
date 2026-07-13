@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getKillerForUser } from "@/lib/killers";
+import { parseId, mutationError } from "@/lib/api";
 
 export async function PATCH(
   _req: Request,
@@ -13,21 +15,20 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const killerId = parseInt(id, 10);
-  if (isNaN(killerId)) {
+  const killerId = parseId(id);
+  if (killerId === null) {
     return NextResponse.json({ error: "Invalid killer ID" }, { status: 400 });
   }
 
   try {
+    const userId = session.user.id;
     await prisma.match.create({
-      data: { userId: session.user.id, killerId, result: "loss", teamId: null },
+      data: { userId, killerId, result: "loss", teamId: null },
     });
-    const killer = await getKillerForUser(session.user.id, killerId);
+    revalidateTag(`streaks:${userId}`, "max");
+    const killer = await getKillerForUser(userId, killerId);
     return NextResponse.json(killer);
-  } catch {
-    return NextResponse.json(
-      { error: "Killer not found or update failed" },
-      { status: 404 }
-    );
+  } catch (e) {
+    return mutationError("loss route", e);
   }
 }

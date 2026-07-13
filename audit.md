@@ -40,14 +40,14 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | Gravidade | Total | ✅ Concluído | 🟡 Parcial | ⬜ Pendente |
 |-----------|-------|-------------|-----------|------------|
 | 🔴 ALTO   | 3     | 3           | 0         | 0          |
-| 🟠 MÉDIO  | 19    | 5           | 5         | 9          |
+| 🟠 MÉDIO  | 19    | 9           | 2         | 8          |
 | 🟢 BAIXO  | 13    | 2           | 5         | 6          |
-| **Total** | **35**| **10**      | **10**    | **15**     |
+| **Total** | **35**| **14**      | **7**     | **14**     |
 
-> ✅ **Fase 0 (ALTO) fechada.** ✅ **Fase 1 (gate) fechada:** `tsc` limpo (**M19**), CI criado (**M16**), deps ajustadas (**B5/B6**).
-> ✅ **M1 (auth) e M17/M18 (contadores) resolvidos pelo refactor.** Gate atual: `lint` ✅ · `test` ✅ (242) · `tsc --noEmit` ✅ (0 erros).
+> ✅ **Fase 0 (ALTO)**, **Fase 1 (gate)** e **Fase 2 (API & dados)** fechadas.
+> ✅ **M1 (auth) e M17/M18 (contadores) resolvidos pelo refactor.** Gate atual: `lint` ✅ · `test` ✅ (272) · `tsc --noEmit` ✅ (0 erros) · `build` ✅.
 > ⚠️ **Falta 1 passo manual no GitHub:** habilitar branch protection em `master` + marcar o job `verify` como *required check*. Como o deploy é automático no merge, sem isso o CI roda mas **não bloqueia** um merge vermelho.
-> Próximo foco sugerido: **M4/M5** (padronizar erros de API) e **M11** (streaks escalável).
+> Próximo foco sugerido: **Fase 3** (M2 rate limit, M3 headers/CSP) ou o item novo **N1** (React Query) para limpar B2/B3/B4 de uma vez.
 
 ---
 
@@ -57,7 +57,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 |------|------|-------|---------|-----------|
 | **0** ✅ | Quick wins — zerar ALTO | A1, A2, A3 | Baixo | Sem crashes / sem corrupção de dados |
 | **1** ✅ | Reparar gate de qualidade | M19, M16, B5, B6 | Baixo | tsc/lint/test verdes; CI criado (falta só branch protection) |
-| **2** | Robustez de API & dados | M4, M5, M6, M11 | Médio | Erros consistentes, streaks escalável |
+| **2** ✅ | Robustez de API & dados | M4, M5, M6, M11 | Médio | Erros consistentes, validação zod, streaks cacheado |
 | **3** | Segurança / hardening | M2, M3 | Médio | Rate limit + headers/CSP |
 | **4** | Next.js & performance | M8, M9, M10 | Médio | Boundaries, streaming, LCP |
 | **5** | Acessibilidade (AA) | M12, M13, M14, M15, B8, B9, B10 | Médio | WCAG AA no essencial |
@@ -109,26 +109,23 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Resolução (verificada):** **moot** — não há contador para ficar negativo. O undo deleta uma linha `Match`.
 - **Status:** ✅ Concluído (resolvido por **M17**). *Resíduo mínimo:* dois undos concorrentes podem competir pelo mesmo `lastWin` → o 2º `delete` lança `P2025` → `catch` → `500` (sem corrupção). Aceitável; endereçar só se virar ruído.
 
-### 🟡 M4 — Erro mapeado como 404 mascara 500 (e engole o erro)
-- **Arquivos:** `src/app/api/killers/[id]/win/route.ts:27-32`, `loss/route.ts:27-32` **(ainda ruins)**; `win/undo` e `loss/undo` **(corrigidos)**.
-- **Situação (verificada):** as rotas de **undo** já distinguem erro (`console.error` + `500`) e devolvem `404` só quando o killer não existe. As rotas de **win/loss (create)** ainda fazem `catch { return 404 }` — engolem qualquer falha de DB como "Killer not found", sem log.
-- **Correção:** aplicar o mesmo padrão das rotas de undo nas rotas de win/loss: logar server-side e devolver `500` para erro genérico; `404` só para killer inexistente (FK/`P2025`).
-- **DoD:** killer inexistente → 404; erro genérico de DB (mock) → 500; ambos com teste.
-- **Status:** 🟡 Parcial — falta win/loss (create).
+### ✅ M4 — Erro mapeado como 404 mascara 500 (e engole o erro)
+- **Arquivos:** `src/app/api/killers/[id]/win/route.ts`, `loss/route.ts`; helper `src/lib/api.ts` (`mutationError`).
+- **Feito (2026-07-12):** as rotas de win/loss (create) agora usam `mutationError(context, e)` no catch → `404` só para `PrismaClientKnownRequestError` `P2003`/`P2025` (FK/registro inexistente), e `console.error` + `500` para qualquer outro erro. Undo já estava correto.
+- **DoD:** ✅ teste killer inexistente (Prisma `P2003`) → 404; erro genérico (mock) → 500; ambos co-locados em `win/route.test.ts` e `loss/route.test.ts`, + teste unitário de `mutationError` em `api.test.ts`.
+- **Status:** ✅ Concluído.
 
-### 🟡 M5 — Rotas sem try/catch
-- **Arquivos:** `src/app/api/history/route.ts` **(ok)**; `src/app/api/stats/streaks/route.ts` **(ainda sem try/catch)**.
-- **Situação (verificada):** `/api/history` já tem `try/catch` + log + `500`. `/api/stats/streaks` **não** — `findMany` + cômputo rodam sem proteção; erro de DB vira `500` não tratado e sem log. (Rotas de killers já têm try/catch.)
-- **Correção:** padronizar try/catch + `console.error` + `500` em `stats/streaks` (mesmo padrão de M4).
-- **DoD:** teste com Prisma lançando → `500` controlado.
-- **Status:** 🟡 Parcial — falta `stats/streaks`.
+### ✅ M5 — Rotas sem try/catch
+- **Arquivos:** `src/app/api/stats/streaks/route.ts` (era o único faltando; `history` já estava ok).
+- **Feito (2026-07-12):** `stats/streaks` GET agora envolve o fetch/cômputo em `try/catch` + `console.error` + `500` controlado.
+- **DoD:** ✅ teste com `prisma.match.findMany` lançando → `500` (co-locado em `stats/streaks/route.test.ts`).
+- **Status:** ✅ Concluído.
 
-### 🟡 M6 — Validação de schema (zod) nas bordas
-- **Arquivos:** rotas de API (params/query/body)
-- **Situação (verificada):** `zod@4.4.3` entrou como dependência e **já é usado** em `players`, `teams`, `streaks/matches`, `signup` e `auth.ts`. As rotas de **killers** (`win`/`loss`/`undo`) e **history** ainda validam ad-hoc (`isNaN`, `Number.parseInt`).
-- **Correção:** helper de parse com zod para `id`/`page`; retornar `400` em input inválido; aplicar nas rotas de killers/history.
-- **DoD:** schema por rota; teste de input inválido → 400.
-- **Status:** 🟡 Parcial — adotado nas rotas novas; falta killers/history.
+### ✅ M6 — Validação de schema (zod) nas bordas
+- **Arquivos:** `src/lib/api.ts` (`parseId`, `parsePage`); aplicado em `killers/[id]/{win,loss}` + ambos `undo` e em `history`.
+- **Feito (2026-07-12):** helper com zod — `parseId` (`z.coerce.number().int().positive()` → `null` em inválido → `400`) substituiu os `isNaN`; `parsePage` (`…positive().catch(1)`) substituiu o `Number.parseInt` ad-hoc em `history` (consolida a raiz do antigo **A2**). Rotas novas (players/teams/streaks/signup) já usavam zod.
+- **DoD:** ✅ `api.test.ts` cobre `parseId`/`parsePage` (incl. `abc`, `0`, `-3`, `""`, `1.5`, `null`); rotas retornam `400` em id inválido (testes co-locados).
+- **Status:** ✅ Concluído.
 
 ### ✅ M19 — Testes & tipagem dos testes (regressão de `tsc`)
 - **Arquivos:** vários `*.test.ts(x)`; foco em `src/app/api/stats/streaks/route.test.ts`, `src/app/api/killers/route.test.ts`, `src/app/page.test.tsx`, `src/app/api/streaks/matches/route.test.ts`.
@@ -176,12 +173,13 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **DoD:** imagens via `/_next/image`; LCP melhora perceptível.
 - **Status:** ⬜ Pendente.
 
-### ⬜ M11 — `/api/stats/streaks` carrega todos os `Match` em memória por request
-- **Arquivo:** `src/app/api/stats/streaks/route.ts:13-17`
-- **Problema:** `findMany` sem limite + cômputo na aplicação a cada request, sem cache; refetch a cada mudança de `totalMatches`.
-- **Correção:** agregar/limitar em SQL, cachear (`revalidate`/tag) ou computar streak incremental.
-- **DoD:** endpoint não escala linearmente com o histórico total; teste do cômputo mantido.
-- **Status:** ⬜ Pendente. (Combina com **M5** — mesmo arquivo.)
+### ✅ M11 — `/api/stats/streaks` carrega todos os `Match` em memória por request
+- **Arquivo:** `src/app/api/stats/streaks/route.ts` + `revalidateTag` nas rotas de mutação.
+- **Decisão:** cache **de servidor** (não React Query — que é cache de cliente e não reduz o custo do backend; ver **N1**). Escolha registrada.
+- **Feito (2026-07-12):** o cômputo foi extraído para `computeStreaksForUser` e envolvido em `unstable_cache(fn, ["streaks", userId], { tags: ["streaks:"+userId], revalidate: 60 })`. Toda rota que muda `Match` (win/loss + undos, streak match POST e o DELETE em `streaks/matches/[id]`) chama `revalidateTag("streaks:"+userId, "max")` (stale-while-revalidate — forma correta no Next 16 em Route Handler; `revalidate: 60` é rede de segurança). Assim o recompute só roda quando uma partida muda, não a cada request/refetch.
+- **Nota Next 16:** `revalidateTag` agora exige 2º arg (`"max"`); a forma antiga de 1 arg estava no DELETE `streaks/matches/[id]` recém-commitado e **quebrava o build** — corrigida aqui.
+- **DoD:** ✅ endpoint deixa de recomputar a cada request; testes do cômputo mantidos + 500 path; `build` valida a API de cache.
+- **Status:** ✅ Concluído. *Trade-off aceito:* streak pode ficar ~1 refetch atrás (stale-while-revalidate) — imaterial p/ métrica "maior sequência".
 
 ### ⬜ M12 — Autocomplete sem semântica ARIA de combobox
 - **Arquivos:** `src/components/molecules/KillerSearchInput.tsx:30-42`, `src/components/organisms/KillerAutocomplete.tsx:56-72`, `src/components/molecules/AutocompleteOption.tsx`
@@ -300,6 +298,22 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 
 ---
 
+## 🆕 Novos itens (descobertos durante a execução)
+
+### ⬜ N1 — Refactor de data-fetching no cliente (React Query / TanStack Query)
+- **Contexto:** decisão registrada durante o **M11**. React Query é cache de **cliente** — não resolve o custo de servidor do M11 (por isso o M11 foi feito com cache de servidor), mas é a ferramenta certa para consolidar os 6 hooks feitos à mão (`useKillers`, `useHistory`, `useStreaks`, `usePlayers`, `useTeams`, `useTeamStreaks`).
+- **Resolve de uma vez:** **B2** (otimista vs pessimista), **B3** (loading/erro manual), **B4** (sinal de refetch derivado). Padroniza dedupe, staleness, invalidação e background refetch.
+- **Escopo:** refactor transversal (todos os hooks + testes de hook) — iniciativa própria, fora das fases de correção pontual.
+- **Status:** ⬜ Pendente (registrado; priorizar após Fase 3 ou como cleanup dedicado).
+
+### ✅ N2 — `revalidateTag` de 1 argumento quebrava o build (Next 16)
+- **Arquivo:** `src/app/api/streaks/matches/[id]/route.ts:55` (DELETE de partida de streak, commit recente).
+- **Problema:** Next 16 exige `revalidateTag(tag, profile)`; a chamada de 1 arg era erro de tipo → `tsc`/`build` vermelhos (só não pegou antes por não haver CI — ver **M16**).
+- **Feito (2026-07-12):** ajustado para `revalidateTag("streaks:"+userId, "max")`, alinhado ao padrão do M11.
+- **Status:** ✅ Concluído.
+
+---
+
 ## ℹ️ Decisões / INFO / Sem achados
 
 | ID | Item | Ação |
@@ -326,4 +340,4 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 ---
 
 _Última atualização: 2026-07-12 — revisão completa contra o código atual pós-refactor (auth + multiusuário + Match como fonte única)._
-_Progresso: 10/35 concluídos, 10/35 parciais, 15/35 pendentes. Gate: `lint` ✅ · `test` ✅ (242) · `tsc --noEmit` ✅ (0 erros). Fase 1 concluída (falta habilitar branch protection no GitHub — M16)._
+_Progresso: 14/35 concluídos, 7/35 parciais, 14/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ · `test` ✅ (272) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0, 1 e 2 concluídas (falta habilitar branch protection no GitHub — M16)._

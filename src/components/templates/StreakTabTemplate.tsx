@@ -7,7 +7,7 @@ import { TeamStreakCard } from "@/components/organisms/TeamStreakCard";
 import type { KillerStats } from "@/types/killer";
 
 export function StreakTabTemplate({ isActive, killers }: { isActive: boolean; killers: KillerStats[] }) {
-  const { teamStreaks, loading, launching, launchMatch } = useTeamStreaks(isActive);
+  const { teamStreaks, loading, launching, deletingId, launchMatch, deleteMatch } = useTeamStreaks(isActive);
   const teams = teamStreaks.map((s) => s.team);
 
   return (
@@ -29,7 +29,7 @@ export function StreakTabTemplate({ isActive, killers }: { isActive: boolean; ki
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {teamStreaks.map((s) => (
-            <TeamStreakCard key={s.team.id} streak={s} />
+            <TeamStreakCard key={s.team.id} streak={s} onDeleteMatch={deleteMatch} deletingId={deletingId} />
           ))}
         </div>
       )}

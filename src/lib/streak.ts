@@ -20,6 +20,43 @@ export function decideStreakAction(hasActiveRun: boolean, result: MatchResult): 
   return { createRun: false, incrementWin: false, closeRun: hasActiveRun, attachToRun: hasActiveRun };
 }
 
+export interface ComputedRun {
+  winCount: number;
+  status: "active" | "ended";
+  startedAt: Date;
+  endedAt: Date | null;
+  matchIds: number[];
+}
+
+// Reconstruct a team's streak runs from its matches in chronological (ascending)
+// order — a win extends/opens the active run, a loss closes it. Used to rebuild
+// run state from scratch after a match is deleted, so counters can never drift.
+export function recomputeStreakRuns(
+  matches: { id: number; result: MatchResult; createdAt: Date }[]
+): ComputedRun[] {
+  const runs: ComputedRun[] = [];
+  let current: ComputedRun | null = null;
+
+  for (const m of matches) {
+    if (m.result === "win") {
+      if (!current) {
+        current = { winCount: 0, status: "active", startedAt: m.createdAt, endedAt: null, matchIds: [] };
+        runs.push(current);
+      }
+      current.winCount += 1;
+      current.matchIds.push(m.id);
+      continue;
+    }
+    if (!current) continue;
+    current.status = "ended";
+    current.endedAt = m.createdAt;
+    current.matchIds.push(m.id);
+    current = null;
+  }
+
+  return runs;
+}
+
 interface TeamRow {
   id: number;
   name: string;

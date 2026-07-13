@@ -10,6 +10,7 @@ export function useTeamStreaks(isActive: boolean) {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [launching, setLaunching] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<number | null>(null);
 
   async function fetchStreaks() {
     setLoading(true);
@@ -64,5 +65,25 @@ export function useTeamStreaks(isActive: boolean) {
     }
   }
 
-  return { teamStreaks, loading, error, launching, launchMatch, refetch: fetchStreaks };
+  async function deleteMatch(matchId: number): Promise<boolean> {
+    setDeletingId(matchId);
+    try {
+      const res = await fetch(`/api/streaks/matches/${matchId}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.error("Could not remove the match");
+        return false;
+      }
+      const updated: TeamStreak = await res.json();
+      setTeamStreaks((prev) => prev.map((t) => (t.team.id === updated.team.id ? updated : t)));
+      toast.success("Match removed");
+      return true;
+    } catch {
+      toast.error("Could not remove the match");
+      return false;
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return { teamStreaks, loading, error, launching, deletingId, launchMatch, deleteMatch, refetch: fetchStreaks };
 }

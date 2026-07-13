@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Session } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { PATCH } from "@/app/api/killers/[id]/win/route";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     match: { create: vi.fn(), count: vi.fn() },
@@ -57,9 +59,18 @@ describe("PATCH /api/killers/[id]/win", () => {
     );
   });
 
-  it("returns 404 when the match creation fails (invalid killer)", async () => {
-    vi.mocked(prisma.match.create).mockRejectedValueOnce(new Error("FK violation"));
+  it("returns 404 when the killer does not exist (foreign-key violation)", async () => {
+    vi.mocked(prisma.match.create).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("FK", { code: "P2003", clientVersion: "5" })
+    );
     const res = await PATCH(req(), { params: Promise.resolve({ id: "999" }) });
     expect(res.status).toBe(404);
+  });
+
+  it("returns 500 when the database fails unexpectedly", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(prisma.match.create).mockRejectedValueOnce(new Error("db down"));
+    const res = await PATCH(req(), { params: Promise.resolve({ id: "1" }) });
+    expect(res.status).toBe(500);
   });
 });

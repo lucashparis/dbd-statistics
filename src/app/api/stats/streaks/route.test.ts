@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import type { MatchResult } from "@/types/killer";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     match: { findMany: vi.fn() },
@@ -74,5 +75,12 @@ describe("GET /api/stats/streaks", () => {
     expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "u1" }, orderBy: { createdAt: "asc" } })
     );
+  });
+
+  it("returns 500 when the database query fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(prisma.match.findMany).mockRejectedValueOnce(new Error("db down"));
+    const res = await GET();
+    expect(res.status).toBe(500);
   });
 });

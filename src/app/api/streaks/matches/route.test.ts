@@ -5,6 +5,7 @@ import { getSessionUserId } from "@/lib/auth-helpers";
 import { getTeamStreak } from "@/lib/streak";
 
 vi.mock("@/lib/auth-helpers", () => ({ getSessionUserId: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
 vi.mock("@/lib/streak", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/streak")>();
   return { ...actual, getTeamStreak: vi.fn() };

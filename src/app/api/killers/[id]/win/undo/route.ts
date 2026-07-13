@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getKillerForUser } from "@/lib/killers";
+import { parseId } from "@/lib/api";
 
 export async function PATCH(
   _req: Request,
@@ -13,8 +15,8 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const killerId = parseInt(id, 10);
-  if (isNaN(killerId)) {
+  const killerId = parseId(id);
+  if (killerId === null) {
     return NextResponse.json({ error: "Invalid killer ID" }, { status: 400 });
   }
 
@@ -27,7 +29,10 @@ export async function PATCH(
       where: { userId, killerId, result: "win", teamId: null },
       orderBy: { createdAt: "desc" },
     });
-    if (lastWin) await prisma.match.delete({ where: { id: lastWin.id } });
+    if (lastWin) {
+      await prisma.match.delete({ where: { id: lastWin.id } });
+      revalidateTag(`streaks:${userId}`, "max");
+    }
 
     const killer = await getKillerForUser(userId, killerId);
     if (!killer) {

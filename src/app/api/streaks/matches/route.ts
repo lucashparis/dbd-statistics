@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
@@ -63,6 +64,8 @@ export async function POST(req: Request) {
       });
     }
   });
+
+  revalidateTag(`streaks:${userId}`, "max");
 
   const summary = await getTeamStreak(userId, teamId);
   return NextResponse.json(summary, { status: 201 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { decideStreakAction, getTeamStreak } from "@/lib/streak";
+import { decideStreakAction, getTeamStreak, recomputeStreakRuns } from "@/lib/streak";
+import type { MatchResult } from "@/types/killer";
 import { prisma } from "@/lib/prisma";
 
 vi.mock("@/lib/prisma", () => ({
@@ -45,6 +46,50 @@ describe("decideStreakAction", () => {
       closeRun: false,
       attachToRun: false,
     });
+  });
+});
+
+describe("recomputeStreakRuns", () => {
+  let clock = 0;
+  function m(id: number, result: MatchResult) {
+    clock += 1;
+    return { id, result, createdAt: new Date(clock * 1000) };
+  }
+
+  it("returns no runs for an empty timeline", () => {
+    expect(recomputeStreakRuns([])).toEqual([]);
+  });
+
+  it("ignores losses that occur outside any run", () => {
+    expect(recomputeStreakRuns([m(1, "loss"), m(2, "loss")])).toEqual([]);
+  });
+
+  it("opens an active run on a lone win", () => {
+    const runs = recomputeStreakRuns([m(1, "win")]);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ winCount: 1, status: "active", endedAt: null, matchIds: [1] });
+  });
+
+  it("closes a run on a loss and attaches the loss to it", () => {
+    const win1 = m(1, "win");
+    const win2 = m(2, "win");
+    const loss = m(3, "loss");
+    const runs = recomputeStreakRuns([win1, win2, loss]);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      winCount: 2,
+      status: "ended",
+      startedAt: win1.createdAt,
+      endedAt: loss.createdAt,
+      matchIds: [1, 2, 3],
+    });
+  });
+
+  it("splits into an ended run and a fresh active run across a loss", () => {
+    const runs = recomputeStreakRuns([m(1, "win"), m(2, "loss"), m(3, "win"), m(4, "win")]);
+    expect(runs).toHaveLength(2);
+    expect(runs[0]).toMatchObject({ winCount: 1, status: "ended", matchIds: [1, 2] });
+    expect(runs[1]).toMatchObject({ winCount: 2, status: "active", endedAt: null, matchIds: [3, 4] });
   });
 });
 

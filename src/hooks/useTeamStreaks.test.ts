@@ -62,4 +62,34 @@ describe("useTeamStreaks", () => {
     });
     expect(ok).toBe(false);
   });
+
+  it("deleteMatch replaces the team streak with the rebuilt summary", async () => {
+    mockFetch.mockResolvedValueOnce(res(200, [ts(1, 3)]));
+    const { result } = renderHook(() => useTeamStreaks(true));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockFetch.mockResolvedValueOnce(res(200, ts(1, 2)));
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await result.current.deleteMatch(55);
+    });
+    expect(ok).toBe(true);
+    expect(mockFetch).toHaveBeenLastCalledWith("/api/streaks/matches/55", { method: "DELETE" });
+    expect(result.current.teamStreaks[0].currentStreak).toBe(2);
+    expect(result.current.deletingId).toBeNull();
+  });
+
+  it("deleteMatch returns false and keeps state on a server error", async () => {
+    mockFetch.mockResolvedValueOnce(res(200, [ts(1, 3)]));
+    const { result } = renderHook(() => useTeamStreaks(true));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockFetch.mockResolvedValueOnce(res(500, {}));
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await result.current.deleteMatch(55);
+    });
+    expect(ok).toBe(false);
+    expect(result.current.teamStreaks[0].currentStreak).toBe(3);
+  });
 });

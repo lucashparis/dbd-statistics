@@ -1,12 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Flame, Trophy, Activity, TrendingUp, ChevronDown, Users } from "lucide-react";
+import { Flame, Trophy, Activity, TrendingUp, ChevronDown, Users, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TeamStreak } from "@/types/team";
 
-export function TeamStreakCard({ streak }: { streak: TeamStreak }) {
+export function TeamStreakCard({
+  streak,
+  onDeleteMatch,
+  deletingId,
+}: {
+  streak: TeamStreak;
+  onDeleteMatch?: (matchId: number) => void;
+  deletingId?: number | null;
+}) {
   const [open, setOpen] = React.useState(false);
+  const [confirmId, setConfirmId] = React.useState<number | null>(null);
 
   return (
     <article className="card-dark p-5 space-y-4">
@@ -59,6 +68,45 @@ export function TeamStreakCard({ streak }: { streak: TeamStreak }) {
                     <span className="text-xs text-muted">
                       {new Date(m.createdAt).toLocaleDateString("pt-BR")}
                     </span>
+                    {onDeleteMatch &&
+                      (confirmId === m.id ? (
+                        <span className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirmId(null);
+                              onDeleteMatch(m.id);
+                            }}
+                            disabled={deletingId === m.id}
+                            className="text-[11px] font-medium text-blood transition-colors hover:text-blood-dark disabled:opacity-50"
+                            aria-label={`Confirm removing match against ${m.killer.name}`}
+                          >
+                            Remove
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmId(null)}
+                            className="text-[11px] text-muted transition-colors hover:text-white"
+                            aria-label="Cancel removal"
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmId(m.id)}
+                          disabled={deletingId === m.id}
+                          className="text-muted transition-colors hover:text-blood disabled:opacity-50"
+                          aria-label={`Remove match against ${m.killer.name}`}
+                        >
+                          {deletingId === m.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={14} />
+                          )}
+                        </button>
+                      ))}
                   </span>
                 </li>
               ))}
