@@ -10,6 +10,7 @@ A personal Dead by Daylight statistics tracker. Sign in, log your wins and losse
 - **NextAuth v5** — credentials auth (email + password, bcrypt)
 - **Prisma ORM** — PostgreSQL, multi-user schema
 - **Zod** — input validation at API boundaries
+- **TanStack Query v5** — client server-state (caching, invalidation, optimistic updates)
 - **Tailwind CSS v4** — utility-first styling
 - **Recharts** — interactive pie charts
 - **Vitest** + Testing Library — unit/component/hook tests

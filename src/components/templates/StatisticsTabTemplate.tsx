@@ -17,8 +17,7 @@ interface StatisticsTabTemplateProps {
 
 export function StatisticsTabTemplate({ killers, isLoading, statsNav, onNavigateToStats }: StatisticsTabTemplateProps) {
   const autocomplete = useAutocomplete(killers);
-  const totalMatches = killers.reduce((sum, k) => sum + k.total, 0);
-  const { streaks } = useStreaks(totalMatches);
+  const { streaks } = useStreaks();
   const selectedStreaks = autocomplete.selected ? streaks.perKiller[autocomplete.selected.id] : undefined;
 
   React.useEffect(() => {

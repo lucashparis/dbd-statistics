@@ -1,83 +1,75 @@
 "use client";
 
-import * as React from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 import type { Player } from "@/types/team";
 
+async function fetchPlayers(): Promise<Player[]> {
+  const res = await fetch("/api/players");
+  if (!res.ok) throw new Error("Failed to load players");
+  return (await res.json()) as Player[];
+}
+
 export function usePlayers(isActive: boolean) {
-  const [players, setPlayers] = React.useState<Player[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const [deletingId, setDeletingId] = React.useState<number | null>(null);
+  const queryClient = useQueryClient();
 
-  async function fetchPlayers() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/players");
-      if (!res.ok) throw new Error("Failed to load players");
-      setPlayers(await res.json());
-    } catch {
-      setError("Could not load players.");
-      setPlayers([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const query = useQuery({
+    queryKey: queryKeys.players,
+    queryFn: fetchPlayers,
+    enabled: isActive,
+  });
 
-  React.useEffect(() => {
-    if (!isActive) return;
-    fetchPlayers();
-  }, [isActive]);
-
-  async function addPlayer(name: string, nick: string): Promise<boolean> {
-    setSaving(true);
-    try {
+  const addMutation = useMutation({
+    mutationFn: async ({ name, nick }: { name: string; nick: string }) => {
       const res = await fetch("/api/players", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, nick }),
       });
-      if (res.status === 409) {
-        toast.error("That nick is already taken");
-        return false;
-      }
-      if (!res.ok) {
-        toast.error("Could not add player");
-        return false;
-      }
-      const player: Player = await res.json();
-      setPlayers((prev) => [...prev, player]);
+      if (res.status === 409) throw new Error("That nick is already taken");
+      if (!res.ok) throw new Error("Could not add player");
+      return (await res.json()) as Player;
+    },
+    onSuccess: (player) => {
+      queryClient.setQueryData<Player[]>(queryKeys.players, (old) => [...(old ?? []), player]);
       toast.success("Player added");
-      return true;
-    } catch {
-      toast.error("Could not add player");
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not add player"),
+  });
 
-  async function deletePlayer(id: number): Promise<void> {
-    setDeletingId(id);
-    try {
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
       const res = await fetch(`/api/players/${id}`, { method: "DELETE" });
-      if (res.status === 409) {
-        toast.error("Player is in a team — remove them first");
-        return;
-      }
-      if (!res.ok && res.status !== 204) {
-        toast.error("Could not delete player");
-        return;
-      }
-      setPlayers((prev) => prev.filter((p) => p.id !== id));
-    } catch {
-      toast.error("Could not delete player");
-    } finally {
-      setDeletingId(null);
-    }
-  }
+      if (res.status === 409) throw new Error("Player is in a team — remove them first");
+      if (!res.ok && res.status !== 204) throw new Error("Could not delete player");
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.setQueryData<Player[]>(queryKeys.players, (old) => old?.filter((p) => p.id !== id));
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not delete player"),
+  });
 
-  return { players, loading, error, saving, deletingId, addPlayer, deletePlayer, refetch: fetchPlayers };
+  return {
+    players: query.data ?? [],
+    loading: query.isLoading,
+    error: query.isError ? "Could not load players." : null,
+    saving: addMutation.isPending,
+    deletingId: deleteMutation.isPending ? deleteMutation.variables ?? null : null,
+    addPlayer: async (name: string, nick: string): Promise<boolean> => {
+      try {
+        await addMutation.mutateAsync({ name, nick });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deletePlayer: async (id: number): Promise<void> => {
+      await deleteMutation.mutateAsync(id).catch(() => {});
+    },
+    refetch: async () => {
+      await query.refetch();
+    },
+  };
 }

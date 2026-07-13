@@ -1,6 +1,7 @@
 "use client";
 
-import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import type { StreaksData } from "@/types/killer";
 
 const EMPTY: StreaksData = {
@@ -8,33 +9,20 @@ const EMPTY: StreaksData = {
   perKiller: {},
 };
 
-export function useStreaks(signal: number) {
-  const [streaks, setStreaks] = React.useState<StreaksData>(EMPTY);
-  const [loading, setLoading] = React.useState(true);
+async function fetchStreaks(): Promise<StreaksData> {
+  const res = await fetch("/api/stats/streaks");
+  if (!res.ok) throw new Error(`Streaks request failed: ${res.status}`);
+  return (await res.json()) as StreaksData;
+}
 
-  React.useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
+export function useStreaks() {
+  const query = useQuery({
+    queryKey: queryKeys.streaks,
+    queryFn: fetchStreaks,
+  });
 
-    fetch("/api/stats/streaks")
-      .then((res) => {
-        if (!res.ok) throw new Error(`Streaks request failed: ${res.status}`);
-        return res.json() as Promise<StreaksData>;
-      })
-      .then((data) => {
-        if (!cancelled) setStreaks(data);
-      })
-      .catch(() => {
-        if (!cancelled) setStreaks(EMPTY);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [signal]);
-
-  return { streaks, loading };
+  return {
+    streaks: query.data ?? EMPTY,
+    loading: query.isLoading,
+  };
 }

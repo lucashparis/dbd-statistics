@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useStreaks } from "@/hooks/useStreaks";
+import { createQueryWrapper } from "@/test/queryWrapper";
 import type { StreaksData } from "@/types/killer";
 
 const fixture: StreaksData = {
@@ -21,38 +22,18 @@ describe("useStreaks", () => {
 
   it("starts with empty streaks before the fetch resolves", () => {
     mockFetch.mockReturnValueOnce(new Promise(() => {}));
-    const { result } = renderHook(() => useStreaks(0));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useStreaks(), { wrapper: Wrapper });
     expect(result.current.streaks.global).toEqual(EMPTY_GLOBAL);
     expect(result.current.loading).toBe(true);
   });
 
   it("populates streaks after fetching", async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => fixture });
-    const { result } = renderHook(() => useStreaks(1));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useStreaks(), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.streaks).toEqual(fixture);
-  });
-
-  it("re-fetches when the signal changes", async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => fixture });
-    const { rerender } = renderHook(({ signal }) => useStreaks(signal), {
-      initialProps: { signal: 1 },
-    });
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
-
-    rerender({ signal: 2 });
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
-  });
-
-  it("does not re-fetch when the signal is unchanged", async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => fixture });
-    const { rerender } = renderHook(({ signal }) => useStreaks(signal), {
-      initialProps: { signal: 5 },
-    });
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
-
-    rerender({ signal: 5 });
-    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it("falls back to empty streaks when the response is not ok", async () => {
@@ -61,7 +42,8 @@ describe("useStreaks", () => {
       status: 500,
       json: async () => ({ error: "boom" }),
     });
-    const { result } = renderHook(() => useStreaks(1));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useStreaks(), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.streaks.global).toEqual(EMPTY_GLOBAL);
     expect(result.current.streaks.perKiller).toEqual({});
@@ -69,7 +51,8 @@ describe("useStreaks", () => {
 
   it("falls back to empty streaks when fetch rejects", async () => {
     mockFetch.mockRejectedValueOnce(new Error("network"));
-    const { result } = renderHook(() => useStreaks(2));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useStreaks(), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.streaks.global).toEqual(EMPTY_GLOBAL);
   });

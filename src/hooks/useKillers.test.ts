@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
 import { useKillers } from "@/hooks/useKillers";
+import { createQueryWrapper } from "@/test/queryWrapper";
 
-vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 const killerFixture = {
   id: 1,
@@ -16,6 +18,20 @@ const killerFixture = {
 
 const mockFetch = vi.fn();
 
+// Route GET /api/killers (list refetch after invalidation) vs the PATCH mutation
+// endpoints. `patchOk` decides whether the mutation succeeds.
+function routeFetch(listAfter: typeof killerFixture[], patchOk: boolean) {
+  mockFetch.mockImplementation((url: string) => {
+    if (url === "/api/killers") {
+      return Promise.resolve({ ok: true, json: async () => listAfter });
+    }
+    return Promise.resolve({
+      ok: patchOk,
+      json: async () => ({ ...killerFixture, wins: 7 }),
+    });
+  });
+}
+
 describe("useKillers", () => {
   beforeEach(() => vi.stubGlobal("fetch", mockFetch));
   afterEach(() => {
@@ -24,87 +40,74 @@ describe("useKillers", () => {
   });
 
   it("initializes with computed stats from initialKillers", () => {
-    const { result } = renderHook(() => useKillers([killerFixture]));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture]), { wrapper: Wrapper });
     expect(result.current.killers).toHaveLength(1);
     expect(result.current.killers[0].total).toBe(10);
     expect(result.current.killers[0].winRate).toBe(60);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("fetchKillers updates killers list on success", async () => {
-    const updated = { ...killerFixture, wins: 7 };
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [updated] });
-    const { result } = renderHook(() => useKillers([killerFixture]));
-    await act(async () => {
-      await result.current.fetchKillers();
-    });
-    expect(result.current.killers[0].wins).toBe(7);
-    expect(result.current.error).toBeNull();
-  });
+  it("registerWin optimistically increments and confirms with the server", async () => {
+    routeFetch([{ ...killerFixture, wins: 7 }], true);
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture]), { wrapper: Wrapper });
 
-  it("fetchKillers sets error on failure", async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false });
-    const { result } = renderHook(() => useKillers([killerFixture]));
-    await act(async () => {
-      await result.current.fetchKillers();
-    });
-    expect(result.current.error).toBe("Failed to fetch killers");
-  });
-
-  it("registerWin updates the matching killer on success", async () => {
-    const updated = { ...killerFixture, wins: 7 };
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => updated });
-    const { result } = renderHook(() => useKillers([killerFixture]));
     await act(async () => {
       await result.current.registerWin(1);
     });
-    expect(result.current.killers[0].wins).toBe(7);
+
+    await waitFor(() => expect(result.current.killers[0].wins).toBe(7));
+    expect(result.current.killers[0].total).toBe(11);
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("registerWin sets error on failure", async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false });
-    const { result } = renderHook(() => useKillers([killerFixture]));
+  it("rolls back and toasts when registerWin fails", async () => {
+    routeFetch([killerFixture], false);
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture]), { wrapper: Wrapper });
+
     await act(async () => {
       await result.current.registerWin(1);
     });
-    expect(result.current.error).toBe("Failed to register win");
+
+    await waitFor(() => expect(result.current.killers[0].wins).toBe(6));
+    expect(toast.error).toHaveBeenCalledWith("Failed to register win");
   });
 
-  it("registerLoss updates the matching killer on success", async () => {
-    const updated = { ...killerFixture, losses: 5 };
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => updated });
-    const { result } = renderHook(() => useKillers([killerFixture]));
+  it("registerLoss optimistically increments losses", async () => {
+    routeFetch([{ ...killerFixture, losses: 5 }], true);
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture]), { wrapper: Wrapper });
+
     await act(async () => {
       await result.current.registerLoss(1);
     });
-    expect(result.current.killers[0].losses).toBe(5);
+
+    await waitFor(() => expect(result.current.killers[0].losses).toBe(5));
   });
 
-  it("registerLoss sets error on failure", async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false });
-    const { result } = renderHook(() => useKillers([killerFixture]));
-    await act(async () => {
-      await result.current.registerLoss(1);
-    });
-    expect(result.current.error).toBe("Failed to register loss");
-  });
+  it("undoWin optimistically decrements wins", async () => {
+    routeFetch([{ ...killerFixture, wins: 5 }], true);
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture]), { wrapper: Wrapper });
 
-  it("undoWin updates killer on success", async () => {
-    const updated = { ...killerFixture, wins: 5 };
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => updated });
-    const { result } = renderHook(() => useKillers([killerFixture]));
     await act(async () => {
       await result.current.undoWin(1);
     });
-    expect(result.current.killers[0].wins).toBe(5);
+
+    await waitFor(() => expect(result.current.killers[0].wins).toBe(5));
   });
 
-  it("undoLoss updates killer on success", async () => {
-    const updated = { ...killerFixture, losses: 3 };
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => updated });
-    const { result } = renderHook(() => useKillers([killerFixture]));
+  it("fetchKillers refetches the list from the server", async () => {
+    routeFetch([{ ...killerFixture, wins: 9 }], true);
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture]), { wrapper: Wrapper });
+
     await act(async () => {
-      await result.current.undoLoss(1);
+      await result.current.fetchKillers();
     });
-    expect(result.current.killers[0].losses).toBe(3);
+
+    await waitFor(() => expect(result.current.killers[0].wins).toBe(9));
   });
 });

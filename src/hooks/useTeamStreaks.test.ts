@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useTeamStreaks } from "@/hooks/useTeamStreaks";
+import { createQueryWrapper } from "@/test/queryWrapper";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
@@ -31,14 +32,16 @@ describe("useTeamStreaks", () => {
 
   it("fetches streaks when the tab becomes active", async () => {
     mockFetch.mockResolvedValueOnce(res(200, [ts(1, 2)]));
-    const { result } = renderHook(() => useTeamStreaks(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeamStreaks(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.teamStreaks).toHaveLength(1);
   });
 
   it("launchMatch updates the team streak in place", async () => {
     mockFetch.mockResolvedValueOnce(res(200, [ts(1, 2)]));
-    const { result } = renderHook(() => useTeamStreaks(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeamStreaks(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockFetch.mockResolvedValueOnce(res(201, ts(1, 3)));
@@ -47,12 +50,13 @@ describe("useTeamStreaks", () => {
       ok = await result.current.launchMatch(1, 9, "win");
     });
     expect(ok).toBe(true);
-    expect(result.current.teamStreaks[0].currentStreak).toBe(3);
+    await waitFor(() => expect(result.current.teamStreaks[0].currentStreak).toBe(3));
   });
 
   it("launchMatch returns false on a server error", async () => {
     mockFetch.mockResolvedValueOnce(res(200, []));
-    const { result } = renderHook(() => useTeamStreaks(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeamStreaks(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockFetch.mockResolvedValueOnce(res(500, {}));
@@ -65,7 +69,8 @@ describe("useTeamStreaks", () => {
 
   it("deleteMatch replaces the team streak with the rebuilt summary", async () => {
     mockFetch.mockResolvedValueOnce(res(200, [ts(1, 3)]));
-    const { result } = renderHook(() => useTeamStreaks(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeamStreaks(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockFetch.mockResolvedValueOnce(res(200, ts(1, 2)));
@@ -75,13 +80,14 @@ describe("useTeamStreaks", () => {
     });
     expect(ok).toBe(true);
     expect(mockFetch).toHaveBeenLastCalledWith("/api/streaks/matches/55", { method: "DELETE" });
-    expect(result.current.teamStreaks[0].currentStreak).toBe(2);
+    await waitFor(() => expect(result.current.teamStreaks[0].currentStreak).toBe(2));
     expect(result.current.deletingId).toBeNull();
   });
 
   it("deleteMatch returns false and keeps state on a server error", async () => {
     mockFetch.mockResolvedValueOnce(res(200, [ts(1, 3)]));
-    const { result } = renderHook(() => useTeamStreaks(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeamStreaks(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockFetch.mockResolvedValueOnce(res(500, {}));

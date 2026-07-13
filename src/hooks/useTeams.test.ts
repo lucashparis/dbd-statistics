@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useTeams } from "@/hooks/useTeams";
+import { createQueryWrapper } from "@/test/queryWrapper";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
@@ -25,7 +26,8 @@ describe("useTeams", () => {
 
   it("fetches teams when the tab becomes active", async () => {
     mockFetch.mockResolvedValueOnce(res(200, [team]));
-    const { result } = renderHook(() => useTeams(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeams(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.teams).toHaveLength(1);
     expect(result.current.teams[0].members[0].nick).toBe("OldDead");
@@ -33,7 +35,8 @@ describe("useTeams", () => {
 
   it("createTeam appends the created team and returns true", async () => {
     mockFetch.mockResolvedValueOnce(res(200, []));
-    const { result } = renderHook(() => useTeams(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeams(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockFetch.mockResolvedValueOnce(res(201, team));
@@ -42,12 +45,13 @@ describe("useTeams", () => {
       ok = await result.current.createTeam("Alpha", [1]);
     });
     expect(ok).toBe(true);
-    expect(result.current.teams).toHaveLength(1);
+    await waitFor(() => expect(result.current.teams).toHaveLength(1));
   });
 
   it("createTeam returns false when the name collides (409)", async () => {
     mockFetch.mockResolvedValueOnce(res(200, []));
-    const { result } = renderHook(() => useTeams(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeams(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockFetch.mockResolvedValueOnce(res(409, { error: "exists" }));
@@ -61,13 +65,14 @@ describe("useTeams", () => {
 
   it("deleteTeam removes the team on success", async () => {
     mockFetch.mockResolvedValueOnce(res(200, [team]));
-    const { result } = renderHook(() => useTeams(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useTeams(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockFetch.mockResolvedValueOnce(res(204));
     await act(async () => {
       await result.current.deleteTeam(10);
     });
-    expect(result.current.teams).toHaveLength(0);
+    await waitFor(() => expect(result.current.teams).toHaveLength(0));
   });
 });

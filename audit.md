@@ -41,14 +41,15 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 |-----------|-------|-------------|-----------|------------|
 | 🔴 ALTO   | 3     | 3           | 0         | 0          |
 | 🟠 MÉDIO  | 19    | 18          | 1         | 0          |
-| 🟢 BAIXO  | 13    | 6           | 5         | 2          |
-| **Total** | **35**| **27**      | **6**     | **2**      |
+| 🟢 BAIXO  | 13    | 8           | 4         | 1          |
+| **Total** | **35**| **29**      | **5**     | **1**      |
 
 > ✅ **Fases 0 (ALTO), 1 (gate), 2 (API & dados), 3 (segurança/hardening), 4 (Next.js & performance) e 5 (acessibilidade AA)** fechadas.
 > ✅ **M1/M17/M18 pelo refactor; M2 (rate limit, verificado ao vivo) + M3 (headers/CSP); M8 (boundaries) + M9 (skeleton) + M10 (imagens).**
 > ✅ **Fase 5 (2026-07-13):** M12 (combobox APG) + M13 (paleta categórica distinguível + `role="img"`) + M14 (`prefers-reduced-motion`) + M15 (contraste AA) + B8 (focus ring) + B9 (label da busca) + B10 (hex→tokens). Gate atual: `lint` ✅ (0 erros) · `test` ✅ (318) · `tsc --noEmit` ✅ (0 erros).
+> ✅ **N1 (React Query) — 2026-07-13:** os 6 hooks migrados para TanStack Query v5 (`useQuery`/`useInfiniteQuery`/`useMutation`), `QueryClientProvider` em `Providers.tsx`, keys + `invalidateMatchDerived` em `src/lib/query-keys.ts`. Fecha **B2** (otimista + rollback nas mutações de killer) e **B3** (loading/erro deixam de ser `useState` manual); **B4** já estava fechado (sinal derivado → invalidação). Gate: `lint` ✅ · `test` ✅ (313) · `tsc` ✅ · `build` ✅.
 > ⚠️ **Passos manuais (ops/GitHub) fora do alcance do código:** (1) branch protection em `master` + `verify` como *required check* (**M16**); (2) Upstash provisionado — env vars já no deploy (**M2** ✅ pelo usuário).
-> Próximo foco sugerido: **Fase 6** (dívida técnica: B1, B2, B7, B11, B12) ou **N1** (React Query) para limpar B2/B3/B4 de uma vez.
+> Próximo foco sugerido: **Fase 6** (dívida técnica restante: B1, B7, B11, B12; migração ESLint 8→9 em B6).
 
 ---
 
@@ -248,16 +249,16 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Correção:** extrair um agregador em `lib/utils` e reusar (evita drift de fórmula).
 - **Status:** ⬜ Pendente.
 
-### ⬜ B2 — Doc/impl drift: "optimistic updates"
-- **Arquivo:** `src/hooks/useKillers.ts:51-121` — `CLAUDE.md` e `README` dizem otimista, mas o código é **pessimista** (aguarda o servidor e só então `setKillers`).
-- **Correção:** ajustar a doc **ou** implementar otimista + rollback (decidir).
-- **Status:** ⬜ Pendente. (Combina com **B13**.)
+### ✅ B2 — Doc/impl drift: "optimistic updates"
+- **Arquivo:** `src/hooks/useKillers.ts`
+- **Decisão (2026-07-13, com o usuário):** **implementar otimista + rollback** (não só ajustar a doc). Feito no âmbito do **N1**: win/loss/undo usam `onMutate` (snapshot + patch do cache), `onError` (rollback) e `onSettled` (`invalidateMatchDerived`). `CLAUDE.md`/`README` reescritos para "otimista com rollback" — doc e código de novo em acordo.
+- **DoD:** ✅ teste co-locado cobre incremento otimista + rollback com toast em falha.
+- **Status:** ✅ Concluído (via **N1**).
 
-### 🟡 B3 — `useKillers`: loading & `error` não exibido
-- **Arquivo:** `src/hooks/useKillers.ts:29-32`
-- **Situação (verificada):** o "single-slot" foi **parcialmente** resolvido — hoje há 4 slots (`loadingWin/Loss/UndoWin/UndoLoss`), cada um `number | null` (um id por tipo de ação). Ainda não é `Set<number>` (duas ações do mesmo tipo em paralelo se atropelam) e `error` continua só no toast, sem estado inline na UI.
-- **Correção:** `Set<number>` por ação (se necessário paralelismo) e exibir `error` inline.
-- **Status:** 🟡 Parcial.
+### ✅ B3 — `useKillers`: loading & `error` manual
+- **Arquivo:** `src/hooks/useKillers.ts`
+- **Feito (2026-07-13, via N1):** o plumbing manual de `useState` para loading/error saiu — agora vem do TanStack Query. `isLoading`/`error` derivam do `useQuery`; `loadingWin/Loss/UndoWin/UndoLoss` derivam de `mutation.isPending` + `mutation.variables` (um por ação). Erros de mutação são tratados no `onError` (rollback + toast) e o `error` da lista vem de `query.error`.
+- **Status:** ✅ Concluído (via **N1**). *Resíduo aceito (UX, não plumbing):* erros de mutação continuam via **toast** (não banner inline) e o loading é 1 slot por ação (não `Set<number>` para paralelismo do mesmo tipo) — decisão de UX, endereçar só se virar dor.
 
 ### ⬜ B4 — Sinal de refetch frágil em streaks → **RESOLVIDO (essencial)**
 - **Arquivo:** `src/components/templates/StatisticsTabTemplate.tsx:20-21`, `src/hooks/useStreaks.ts`
@@ -312,11 +313,18 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 
 ## 🆕 Novos itens (descobertos durante a execução)
 
-### ⬜ N1 — Refactor de data-fetching no cliente (React Query / TanStack Query)
-- **Contexto:** decisão registrada durante o **M11**. React Query é cache de **cliente** — não resolve o custo de servidor do M11 (por isso o M11 foi feito com cache de servidor), mas é a ferramenta certa para consolidar os 6 hooks feitos à mão (`useKillers`, `useHistory`, `useStreaks`, `usePlayers`, `useTeams`, `useTeamStreaks`).
-- **Resolve de uma vez:** **B2** (otimista vs pessimista), **B3** (loading/erro manual), **B4** (sinal de refetch derivado). Padroniza dedupe, staleness, invalidação e background refetch.
-- **Escopo:** refactor transversal (todos os hooks + testes de hook) — iniciativa própria, fora das fases de correção pontual.
-- **Status:** ⬜ Pendente (registrado; priorizar após Fase 3 ou como cleanup dedicado).
+### ✅ N1 — Refactor de data-fetching no cliente (TanStack Query v5)
+- **Arquivos:** `@tanstack/react-query` (dep), `src/lib/query-keys.ts` (novo — keys + `invalidateMatchDerived`), `src/components/Providers.tsx` (`QueryClientProvider` aninhado no `SessionProvider`), os 6 hooks (`useKillers`, `useHistory`, `useStreaks`, `usePlayers`, `useTeams`, `useTeamStreaks`), `StatisticsTabTemplate.tsx` (novo contrato de `useStreaks()`), `src/test/queryWrapper.tsx` (helper de teste) + os 6 testes de hook.
+- **Feito (2026-07-13, decisões do usuário: otimista + os 6 hooks):**
+  - `useKillers`: `useQuery` com `initialData` do SSR; win/loss/undo como **4 mutações otimistas com rollback** (`onMutate`/`onError`/`onSettled`). API pública preservada (consumidores intactos).
+  - `useHistory`: `useInfiniteQuery` (`enabled: isActive`); `loadMore`=`fetchNextPage`, `retry`=`refetch`.
+  - `useStreaks`: `useQuery` — **removido o parâmetro `signal`**; freshness por invalidação.
+  - `usePlayers`/`useTeams`/`useTeamStreaks`: `useQuery` (`enabled: isActive`) + mutações que atualizam o cache; writes de streak também chamam `invalidateMatchDerived`.
+  - **Cross-invalidação real:** todo write de `Match` invalida `killers`+`history`+`streaks` (todos derivam de `Match`, filtrados só por `userId` — inclusive matches de time). Antes só a aba ativa refazia fetch.
+- **Resolve:** **B2** ✅, **B3** ✅, **B4** ✅ (já estava). Padroniza dedupe, staleness, invalidação e background refetch.
+- **DoD:** ✅ 6 testes de hook migrados (wrapper `createQueryWrapper`), gate verde (`test` 313 · `lint` 0 erros · `tsc` 0 erros · `build`). 
+- **Status:** ✅ Concluído.
+- ⚠️ *Verificação ao vivo pendente (não bloqueante):* exercer no browser autenticado — sensação otimista do win/loss, rollback ao derrubar a API, e o grid/pizza/histórico atualizando após uma partida de streak.
 
 ### ✅ N2 — `revalidateTag` de 1 argumento quebrava o build (Next 16)
 - **Arquivo:** `src/app/api/streaks/matches/[id]/route.ts:55` (DELETE de partida de streak, commit recente).
@@ -351,5 +359,5 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 
 ---
 
-_Última atualização: 2026-07-13 — Fase 5 (acessibilidade AA) concluída: M12, M13, M14, M15, B8, B9, B10._
-_Progresso: 27/35 concluídos, 6/35 parciais, 2/35 pendentes (+ N1 pendente, N2 concluído). Gate: `lint` ✅ (0 erros) · `test` ✅ (318) · `tsc --noEmit` ✅ (0 erros). Fases 0–5 concluídas; B13 (docs) + I4 (env) fechados. Pendentes: B1, B2 (BAIXO). Ação humana pendente: branch protection no GitHub (M16)._
+_Última atualização: 2026-07-13 — Fase 5 (a11y AA) + N1 (TanStack Query) concluídos._
+_Progresso: 29/35 concluídos, 5/35 parciais, 1/35 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros) · `test` ✅ (313) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0–5 + N1 concluídos; N1 fecha B2/B3 (B4 já estava). Pendente: B1 (BAIXO). Parciais: B6, B7, B11, B12, M16. Ação humana pendente: branch protection no GitHub (M16)._

@@ -6,7 +6,7 @@ Dead by Daylight killer statistics tracker. Authenticated users register wins an
 
 **All data is per-user** and lives behind authentication. There is no shared/global data.
 
-**Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5 (strict) · PostgreSQL + Prisma 5 · NextAuth v5 (credentials) · Zod 4 · Tailwind CSS v4 · Radix UI · Recharts · Vitest
+**Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5 (strict) · PostgreSQL + Prisma 5 · NextAuth v5 (credentials) · Zod 4 · TanStack Query v5 · Tailwind CSS v4 · Radix UI · Recharts · Vitest
 
 ---
 
@@ -40,11 +40,17 @@ Always place new components at the lowest level of abstraction that fits. Do not
 
 ### Hooks (`src/hooks/`)
 
-- `useKillers` — killer list state; win/loss/undo mutations. **Server-confirmed (pessimistic) updates**: it awaits the API response and only then updates local state (not optimistic — see below).
-- `useHistory` — paginated match history. Checks `res.ok`, exposes `error` + `retry`, resets `matches`/`hasMore` on error.
-- `useStreaks` — global + per-killer streaks; re-fetches when the match count changes. Degrades to an empty state on error.
-- `usePlayers` / `useTeams` / `useTeamStreaks` — roster and team-streak state.
-- `useAutocomplete` — search autocomplete with keyboard nav (↑↓ Enter Escape) and click-outside dismissal.
+All server-state hooks are built on **TanStack Query v5** (`@tanstack/react-query`). The `QueryClientProvider` is mounted in `src/components/Providers.tsx` (nested inside `SessionProvider`); query keys and the shared `invalidateMatchDerived` helper live in `src/lib/query-keys.ts`. Each hook wraps `useQuery`/`useInfiniteQuery`/`useMutation` internally but **preserves its previous public return shape**, so consuming components are unchanged.
+
+- `useKillers` — killer list (`useQuery`, seeded with `initialData` from the server render); win/loss/undo are **optimistic mutations with rollback** (`onMutate` snapshots + patches the cache, `onError` restores it, `onSettled` calls `invalidateMatchDerived`). Exposes `loadingWin`/`loadingLoss`/… derived from each mutation's `isPending` + `variables`.
+- `useHistory` — paginated match history via `useInfiniteQuery` (`enabled: isActive`); `matches` is the flattened pages, `loadMore` = `fetchNextPage`, `retry` = `refetch`, `error` from `isError`.
+- `useStreaks` — global + per-killer streaks via `useQuery`; degrades to an empty state on error. **No longer takes a signal** — freshness comes from `invalidateMatchDerived` on any `Match` write.
+- `usePlayers` / `useTeams` / `useTeamStreaks` — roster and team-streak state (`useQuery` gated by `enabled: isActive` + mutations that update the cache; team-streak writes also call `invalidateMatchDerived`).
+- `useAutocomplete` — search autocomplete with keyboard nav (↑↓ Enter Escape) and click-outside dismissal. Pure client state — not a server-state hook.
+
+**Cache invalidation:** any `Match`-writing mutation (killer win/loss/undo, team-streak launch/delete) calls `invalidateMatchDerived(queryClient)` → invalidates `killers` + `history` + `streaks` (all derive from `Match`, filtered only by `userId`). Roster mutations update their own list cache via `setQueryData`.
+
+**Testing hooks:** wrap `renderHook` with `createQueryWrapper()` from `src/test/queryWrapper.tsx` (fresh client per test, retries off, `staleTime: Infinity` so `initialData` queries don't auto-refetch).
 
 ### Utilities (`src/lib/`)
 
@@ -211,7 +217,7 @@ src/app/api/killers/route.ts  → src/app/api/killers/route.test.ts
 | `atoms/` | Renders correctly, applies props/variants, accessible markup |
 | `molecules/` | Composed behavior, conditional rendering, props flow |
 | `organisms/` | User interactions, state changes, calls to hooks/callbacks |
-| `hooks/` | State transitions, server-confirmed updates, error paths |
+| `hooks/` | State transitions, optimistic update + rollback, error paths (wrap in `createQueryWrapper()`) |
 | `lib/` | Pure function input/output, edge cases |
 | `api/` routes | Auth (401), validation (400/404), success and error (500) status codes |
 
@@ -246,7 +252,7 @@ Non-negotiable prevention checklist (see the skill for the full list):
 - **API/Actions:** `await auth()` → `401` first; validate at the boundary with Zod (`parseId`/`parsePage`, body schema) → `400`; thin handler → `mutationError` in `catch` (never swallow, never empty `catch`, never return `200` on error).
 - **Data:** `Match` stays the single source of truth (no `wins`/`losses` columns); set `userId` on every `Match`; related writes go in `$transaction`; every `Match` mutation calls `revalidateTag("streaks:" + userId, "max")` (**2 args** — 1 arg breaks the Next 16 build); never load a whole table per request.
 - **Next.js:** keep `'use client'` low; no secret/server-only import in client bundles; no sensitive `NEXT_PUBLIC_*`; new dynamic routes get `loading.tsx` (skeleton) + `error.tsx`/`not-found.tsx`; no fetch waterfalls; no browser API on the server.
-- **Client fetch:** always check `res.ok`, expose `error` + `retry`; hooks stay pessimistic (docs and code in agreement).
+- **Client fetch:** server state goes through TanStack Query (`useQuery`/`useMutation`); `queryFn` checks `res.ok` and throws on failure so `isError`/`error` surface it. Killer win/loss/undo are optimistic with rollback; every `Match` write calls `invalidateMatchDerived`.
 - **Security:** headers/CSP + rate limiting are baseline (`security-headers.ts`, `proxy.ts`) — just ensure new surfaces are covered; no `dangerouslySetInnerHTML` unsanitized; no raw SQL; secrets in `.env`/vault only.
 - **Perf/a11y/style:** `next/image` optimized with `sizes` and never `src=""`; combobox follows APG ARIA; inputs labelled; `focus-visible` rings; charts `role="img"` + textual alt; `prefers-reduced-motion` guard; text contrast ≥ 4.5:1; color tokens (no raw hex); UI text in English.
 - **Gate:** co-located tests are mandatory; `npm run test` · `npm run lint` · `npx tsc --noEmit` all green before delivery.
@@ -262,7 +268,7 @@ Non-negotiable prevention checklist (see the skill for the full list):
 - **Auth first in every data route** — `const session = await auth(); if (!session?.user) return 401;` then scope all queries by `session.user.id`.
 - **`Match` is the source of truth** — never re-add `wins`/`losses` columns to `Killer`; derive via `src/lib/killers.ts`.
 - **Server Components** for initial data fetching; keep the client boundary (`'use client'`) as low as possible.
-- **Data-fetching hooks are pessimistic** — `useKillers` awaits the server, then updates state (not optimistic). Keep docs and code in agreement.
+- **Server state is TanStack Query** — no bespoke `useState`+`fetch`+`useEffect` data hooks. New server-state hooks use `useQuery`/`useInfiniteQuery`/`useMutation`, with keys + `invalidateMatchDerived` from `src/lib/query-keys.ts`. Killer win/loss/undo are **optimistic with rollback** (`onMutate`/`onError`/`onSettled`); keep docs and code in agreement.
 - **Path alias** `@/*` maps to `src/*` — always use it for imports.
 - **Do not** instantiate a new PrismaClient — use the singleton in `src/lib/prisma.ts`.
 - **Do not** add Tailwind config files — all customization goes in `globals.css`.

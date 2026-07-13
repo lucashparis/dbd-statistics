@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { computeStats } from "@/lib/utils";
 import { toast } from "sonner";
+import { queryKeys, invalidateMatchDerived } from "@/lib/query-keys";
 import type { Killer, KillerStats } from "@/types/killer";
 
 interface UseKillersReturn {
@@ -20,118 +21,88 @@ interface UseKillersReturn {
   undoLoss: (id: number) => Promise<void>;
 }
 
+type KillerAction = "win" | "loss" | "win/undo" | "loss/undo";
+
+const ERROR_MESSAGE: Record<KillerAction, string> = {
+  win: "Failed to register win",
+  loss: "Failed to register loss",
+  "win/undo": "Failed to undo win",
+  "loss/undo": "Failed to undo loss",
+};
+
+async function fetchKillersApi(): Promise<KillerStats[]> {
+  const res = await fetch("/api/killers");
+  if (!res.ok) throw new Error("Failed to fetch killers");
+  const data: Killer[] = await res.json();
+  return data.map(computeStats);
+}
+
+function applyOptimistic(k: KillerStats, action: KillerAction): KillerStats {
+  const wins =
+    action === "win" ? k.wins + 1 : action === "win/undo" ? Math.max(0, k.wins - 1) : k.wins;
+  const losses =
+    action === "loss" ? k.losses + 1 : action === "loss/undo" ? Math.max(0, k.losses - 1) : k.losses;
+  return computeStats({ ...k, wins, losses });
+}
+
+function useKillerAction(action: KillerAction) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/killers/${id}/${action}`, { method: "PATCH" });
+      if (!res.ok) throw new Error(ERROR_MESSAGE[action]);
+      return (await res.json()) as Killer;
+    },
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.killers });
+      const previous = queryClient.getQueryData<KillerStats[]>(queryKeys.killers);
+      queryClient.setQueryData<KillerStats[]>(queryKeys.killers, (old) =>
+        old?.map((k) => (k.id === id ? applyOptimistic(k, action) : k))
+      );
+      return { previous };
+    },
+    onError: (err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKeys.killers, context.previous);
+      toast.error(err instanceof Error ? err.message : "Unknown error");
+    },
+    onSettled: () => invalidateMatchDerived(queryClient),
+  });
+}
+
 export function useKillers(initialKillers: Killer[]): UseKillersReturn {
-  const [killers, setKillers] = useState<KillerStats[]>(
-    initialKillers.map(computeStats)
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingWin, setLoadingWin] = useState<number | null>(null);
-  const [loadingLoss, setLoadingLoss] = useState<number | null>(null);
-  const [loadingUndoWin, setLoadingUndoWin] = useState<number | null>(null);
-  const [loadingUndoLoss, setLoadingUndoLoss] = useState<number | null>(null);
+  const query = useQuery({
+    queryKey: queryKeys.killers,
+    queryFn: fetchKillersApi,
+    initialData: () => initialKillers.map(computeStats),
+  });
 
-  async function fetchKillers() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/killers");
-      if (!res.ok) throw new Error("Failed to fetch killers");
-      const data: Killer[] = await res.json();
-      setKillers(data.map(computeStats));
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Unknown error";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const winAction = useKillerAction("win");
+  const lossAction = useKillerAction("loss");
+  const undoWinAction = useKillerAction("win/undo");
+  const undoLossAction = useKillerAction("loss/undo");
 
-  async function registerWin(id: number) {
-    setLoadingWin(id);
-    try {
-      const res = await fetch(`/api/killers/${id}/win`, { method: "PATCH" });
-      if (!res.ok) throw new Error("Failed to register win");
-      const updated: Killer = await res.json();
-      setKillers((prev) =>
-        prev.map((k) => (k.id === id ? computeStats(updated) : k))
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Unknown error";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoadingWin(null);
-    }
-  }
+  const pendingId = (m: { isPending: boolean; variables?: number }) =>
+    m.isPending ? m.variables ?? null : null;
 
-  async function registerLoss(id: number) {
-    setLoadingLoss(id);
-    try {
-      const res = await fetch(`/api/killers/${id}/loss`, { method: "PATCH" });
-      if (!res.ok) throw new Error("Failed to register loss");
-      const updated: Killer = await res.json();
-      setKillers((prev) =>
-        prev.map((k) => (k.id === id ? computeStats(updated) : k))
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Unknown error";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoadingLoss(null);
-    }
-  }
-
-  async function undoWin(id: number) {
-    setLoadingUndoWin(id);
-    try {
-      const res = await fetch(`/api/killers/${id}/win/undo`, { method: "PATCH" });
-      if (!res.ok) throw new Error("Failed to undo win");
-      const updated: Killer = await res.json();
-      setKillers((prev) =>
-        prev.map((k) => (k.id === id ? computeStats(updated) : k))
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Unknown error";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoadingUndoWin(null);
-    }
-  }
-
-  async function undoLoss(id: number) {
-    setLoadingUndoLoss(id);
-    try {
-      const res = await fetch(`/api/killers/${id}/loss/undo`, { method: "PATCH" });
-      if (!res.ok) throw new Error("Failed to undo loss");
-      const updated: Killer = await res.json();
-      setKillers((prev) =>
-        prev.map((k) => (k.id === id ? computeStats(updated) : k))
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Unknown error";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoadingUndoLoss(null);
-    }
-  }
+  const run = (m: { mutateAsync: (id: number) => Promise<Killer> }) => async (id: number) => {
+    await m.mutateAsync(id).catch(() => {});
+  };
 
   return {
-    killers,
-    isLoading,
-    error,
-    loadingWin,
-    loadingLoss,
-    loadingUndoWin,
-    loadingUndoLoss,
-    fetchKillers,
-    registerWin,
-    registerLoss,
-    undoWin,
-    undoLoss,
+    killers: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    loadingWin: pendingId(winAction),
+    loadingLoss: pendingId(lossAction),
+    loadingUndoWin: pendingId(undoWinAction),
+    loadingUndoLoss: pendingId(undoLossAction),
+    fetchKillers: async () => {
+      await query.refetch();
+    },
+    registerWin: run(winAction),
+    registerLoss: run(lossAction),
+    undoWin: run(undoWinAction),
+    undoLoss: run(undoLossAction),
   };
 }

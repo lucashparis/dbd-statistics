@@ -1,89 +1,98 @@
 "use client";
 
-import * as React from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys, invalidateMatchDerived } from "@/lib/query-keys";
 import type { TeamStreak } from "@/types/team";
 import type { MatchResult } from "@/types/killer";
 
+async function fetchTeamStreaks(): Promise<TeamStreak[]> {
+  const res = await fetch("/api/streaks");
+  if (!res.ok) throw new Error("Failed to load streaks");
+  return (await res.json()) as TeamStreak[];
+}
+
+function upsertStreak(list: TeamStreak[] | undefined, updated: TeamStreak): TeamStreak[] {
+  const current = list ?? [];
+  const exists = current.some((t) => t.team.id === updated.team.id);
+  return exists
+    ? current.map((t) => (t.team.id === updated.team.id ? updated : t))
+    : [...current, updated];
+}
+
 export function useTeamStreaks(isActive: boolean) {
-  const [teamStreaks, setTeamStreaks] = React.useState<TeamStreak[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [launching, setLaunching] = React.useState(false);
-  const [deletingId, setDeletingId] = React.useState<number | null>(null);
+  const queryClient = useQueryClient();
 
-  async function fetchStreaks() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/streaks");
-      if (!res.ok) throw new Error("Failed to load streaks");
-      setTeamStreaks(await res.json());
-    } catch {
-      setError("Could not load streaks.");
-      setTeamStreaks([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const query = useQuery({
+    queryKey: queryKeys.teamStreaks,
+    queryFn: fetchTeamStreaks,
+    enabled: isActive,
+  });
 
-  React.useEffect(() => {
-    if (!isActive) return;
-    fetchStreaks();
-  }, [isActive]);
-
-  async function launchMatch(
-    teamId: number,
-    killerId: number,
-    result: MatchResult
-  ): Promise<boolean> {
-    setLaunching(true);
-    try {
+  const launchMutation = useMutation({
+    mutationFn: async (vars: { teamId: number; killerId: number; result: MatchResult }) => {
       const res = await fetch("/api/streaks/matches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId, killerId, result }),
+        body: JSON.stringify(vars),
       });
-      if (!res.ok) {
-        toast.error("Could not log the match");
-        return false;
-      }
-      const updated: TeamStreak = await res.json();
-      setTeamStreaks((prev) => {
-        const exists = prev.some((t) => t.team.id === updated.team.id);
-        return exists
-          ? prev.map((t) => (t.team.id === updated.team.id ? updated : t))
-          : [...prev, updated];
-      });
-      toast.success(result === "win" ? "Win logged — the streak grows" : "Loss logged — streak reset");
-      return true;
-    } catch {
-      toast.error("Could not log the match");
-      return false;
-    } finally {
-      setLaunching(false);
-    }
-  }
+      if (!res.ok) throw new Error("Could not log the match");
+      return (await res.json()) as TeamStreak;
+    },
+    onSuccess: (updated, vars) => {
+      queryClient.setQueryData<TeamStreak[]>(queryKeys.teamStreaks, (old) => upsertStreak(old, updated));
+      toast.success(
+        vars.result === "win" ? "Win logged — the streak grows" : "Loss logged — streak reset"
+      );
+      invalidateMatchDerived(queryClient);
+    },
+    onError: () => toast.error("Could not log the match"),
+  });
 
-  async function deleteMatch(matchId: number): Promise<boolean> {
-    setDeletingId(matchId);
-    try {
+  const deleteMutation = useMutation({
+    mutationFn: async (matchId: number) => {
       const res = await fetch(`/api/streaks/matches/${matchId}`, { method: "DELETE" });
-      if (!res.ok) {
-        toast.error("Could not remove the match");
+      if (!res.ok) throw new Error("Could not remove the match");
+      return (await res.json()) as TeamStreak;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<TeamStreak[]>(queryKeys.teamStreaks, (old) =>
+        old?.map((t) => (t.team.id === updated.team.id ? updated : t))
+      );
+      toast.success("Match removed");
+      invalidateMatchDerived(queryClient);
+    },
+    onError: () => toast.error("Could not remove the match"),
+  });
+
+  return {
+    teamStreaks: query.data ?? [],
+    loading: query.isLoading,
+    error: query.isError ? "Could not load streaks." : null,
+    launching: launchMutation.isPending,
+    deletingId: deleteMutation.isPending ? deleteMutation.variables ?? null : null,
+    launchMatch: async (
+      teamId: number,
+      killerId: number,
+      result: MatchResult
+    ): Promise<boolean> => {
+      try {
+        await launchMutation.mutateAsync({ teamId, killerId, result });
+        return true;
+      } catch {
         return false;
       }
-      const updated: TeamStreak = await res.json();
-      setTeamStreaks((prev) => prev.map((t) => (t.team.id === updated.team.id ? updated : t)));
-      toast.success("Match removed");
-      return true;
-    } catch {
-      toast.error("Could not remove the match");
-      return false;
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
-  return { teamStreaks, loading, error, launching, deletingId, launchMatch, deleteMatch, refetch: fetchStreaks };
+    },
+    deleteMatch: async (matchId: number): Promise<boolean> => {
+      try {
+        await deleteMutation.mutateAsync(matchId);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    refetch: async () => {
+      await query.refetch();
+    },
+  };
 }

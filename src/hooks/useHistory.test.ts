@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useHistory } from "@/hooks/useHistory";
+import { createQueryWrapper } from "@/test/queryWrapper";
 import type { Match } from "@/types/killer";
 
 const matchFixture: Match = {
@@ -21,7 +22,8 @@ describe("useHistory", () => {
   });
 
   it("does not fetch when isActive is false", () => {
-    renderHook(() => useHistory(false));
+    const { Wrapper } = createQueryWrapper();
+    renderHook(() => useHistory(false), { wrapper: Wrapper });
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -30,7 +32,8 @@ describe("useHistory", () => {
       ok: true,
       json: async () => ({ matches: [matchFixture], total: 1, hasMore: false }),
     });
-    const { result } = renderHook(() => useHistory(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useHistory(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.matches).toHaveLength(1);
     expect(result.current.hasMore).toBe(false);
@@ -49,7 +52,8 @@ describe("useHistory", () => {
         json: async () => ({ matches: [m2], total: 2, hasMore: false }),
       });
 
-    const { result } = renderHook(() => useHistory(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useHistory(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
@@ -61,15 +65,16 @@ describe("useHistory", () => {
     expect(result.current.hasMore).toBe(false);
   });
 
-  it("re-fetches from page 1 when re-activated", async () => {
+  it("fetches on first activation only after becoming active", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ matches: [matchFixture], total: 1, hasMore: false }),
     });
 
+    const { Wrapper } = createQueryWrapper();
     const { rerender } = renderHook(
       ({ isActive }: { isActive: boolean }) => useHistory(isActive),
-      { initialProps: { isActive: false } }
+      { initialProps: { isActive: false }, wrapper: Wrapper }
     );
     expect(mockFetch).not.toHaveBeenCalled();
 
@@ -83,7 +88,8 @@ describe("useHistory", () => {
       status: 500,
       json: async () => ({ error: "boom" }),
     });
-    const { result } = renderHook(() => useHistory(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useHistory(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe("Could not load match history.");
     expect(result.current.matches).toHaveLength(0);
@@ -92,7 +98,8 @@ describe("useHistory", () => {
 
   it("surfaces an error when fetch rejects", async () => {
     mockFetch.mockRejectedValueOnce(new Error("network"));
-    const { result } = renderHook(() => useHistory(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useHistory(true), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe("Could not load match history.");
     expect(result.current.matches).toHaveLength(0);
@@ -106,7 +113,8 @@ describe("useHistory", () => {
         json: async () => ({ matches: [matchFixture], total: 1, hasMore: false }),
       });
 
-    const { result } = renderHook(() => useHistory(true));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useHistory(true), { wrapper: Wrapper });
     await waitFor(() =>
       expect(result.current.error).toBe("Could not load match history.")
     );
@@ -114,9 +122,8 @@ describe("useHistory", () => {
     await act(async () => {
       result.current.retry();
     });
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => expect(result.current.error).toBeNull());
 
-    expect(result.current.error).toBeNull();
     expect(result.current.matches).toHaveLength(1);
   });
 });
