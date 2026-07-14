@@ -5,25 +5,27 @@ import { cn } from "@/lib/utils";
 import { KillerSearchInput } from "@/components/molecules/KillerSearchInput";
 import { AutocompleteOption } from "@/components/molecules/AutocompleteOption";
 import { FilterTag } from "@/components/molecules/FilterTag";
-import type { KillerStats } from "@/types/killer";
+import type { AutocompleteItem } from "@/hooks/useAutocomplete";
 
-interface KillerAutocompleteProps {
-  killers: KillerStats[];
+interface EntityAutocompleteProps<T extends AutocompleteItem> {
   query: string;
   setQuery: (q: string) => void;
-  selected: KillerStats | null;
-  suggestions: KillerStats[];
+  selected: T | null;
+  suggestions: T[];
   isOpen: boolean;
   highlightedIndex: number;
   containerRef: React.RefObject<HTMLDivElement | null>;
-  selectKiller: (killer: KillerStats) => void;
+  select: (item: T) => void;
   clearSelection: () => void;
   handleKeyDown: (e: React.KeyboardEvent) => void;
+  searchLabel: string;
+  suggestionsLabel: string;
+  notFoundLabel: string;
   placeholder?: string;
   className?: string;
 }
 
-export function KillerAutocomplete({
+export function EntityAutocomplete<T extends AutocompleteItem>({
   query,
   setQuery,
   selected,
@@ -31,12 +33,15 @@ export function KillerAutocomplete({
   isOpen,
   highlightedIndex,
   containerRef,
-  selectKiller,
+  select,
   clearSelection,
   handleKeyDown,
+  searchLabel,
+  suggestionsLabel,
+  notFoundLabel,
   placeholder,
   className,
-}: KillerAutocompleteProps) {
+}: EntityAutocompleteProps<T>) {
   const baseId = React.useId();
   const listboxId = `${baseId}-listbox`;
   const optionId = (index: number) => `${baseId}-option-${index}`;
@@ -51,6 +56,7 @@ export function KillerAutocomplete({
         onChange={setQuery}
         onClear={clearSelection}
         placeholder={placeholder}
+        ariaLabel={searchLabel}
         onKeyDown={handleKeyDown}
         role="combobox"
         ariaAutoComplete="list"
@@ -69,19 +75,19 @@ export function KillerAutocomplete({
         <ul
           id={listboxId}
           role="listbox"
-          aria-label="Killer suggestions"
+          aria-label={suggestionsLabel}
           className={cn(
             "absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto",
             "rounded-lg border border-subtle bg-surface-2 shadow-xl shadow-black/50 scrollbar-dark"
           )}
         >
-          {suggestions.map((killer, idx) => (
+          {suggestions.map((item, idx) => (
             <AutocompleteOption
-              key={killer.id}
+              key={item.id}
               id={optionId(idx)}
-              killer={killer}
+              item={item}
               highlighted={idx === highlightedIndex}
-              onClick={selectKiller}
+              onClick={select}
             />
           ))}
         </ul>
@@ -89,7 +95,7 @@ export function KillerAutocomplete({
 
       {isOpen && suggestions.length === 0 && query.trim() && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-subtle bg-surface-2 px-3 py-4 text-center text-xs text-muted shadow-xl">
-          No killers found for &ldquo;{query}&rdquo;
+          {notFoundLabel} &ldquo;{query}&rdquo;
         </div>
       )}
     </div>

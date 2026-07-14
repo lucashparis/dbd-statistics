@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { KillerAutocomplete } from "@/components/organisms/KillerAutocomplete";
+import { EntityAutocomplete } from "@/components/organisms/EntityAutocomplete";
 import { KillerGrid } from "@/components/organisms/KillerGrid";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
 import type { KillerStats } from "@/types/killer";
@@ -50,11 +50,13 @@ export function KillersTabTemplate({
 
   return (
     <div className="space-y-4">
-      <KillerAutocomplete
-        killers={killers}
+      <EntityAutocomplete
         {...autocomplete}
         placeholder="Search and filter killers..."
         className="max-w-sm"
+        searchLabel="Search killers"
+        suggestionsLabel="Killer suggestions"
+        notFoundLabel="No killers found for"
       />
       <KillerGrid
         killers={displayed}

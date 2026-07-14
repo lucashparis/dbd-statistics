@@ -24,13 +24,13 @@ const killer: KillerStats = {
 
 describe("AutocompleteOption", () => {
   it("renders the killer name and portrait", () => {
-    render(<AutocompleteOption killer={killer} onClick={() => {}} />);
+    render(<AutocompleteOption item={killer} onClick={() => {}} />);
     expect(screen.getByText("Huntress")).toBeInTheDocument();
     expect(screen.getByAltText("Huntress")).toBeInTheDocument();
   });
 
   it("is exposed as a listbox option", () => {
-    render(<AutocompleteOption killer={killer} id="option-7" onClick={() => {}} />);
+    render(<AutocompleteOption item={killer} id="option-7" onClick={() => {}} />);
     const option = screen.getByRole("option");
     expect(option).toHaveAttribute("id", "option-7");
     expect(option).toHaveAttribute("aria-selected", "false");
@@ -38,13 +38,13 @@ describe("AutocompleteOption", () => {
 
   it("calls onClick with the killer when pressed", async () => {
     const onClick = vi.fn();
-    render(<AutocompleteOption killer={killer} onClick={onClick} />);
+    render(<AutocompleteOption item={killer} onClick={onClick} />);
     await userEvent.click(screen.getByRole("option"));
     expect(onClick).toHaveBeenCalledWith(killer);
   });
 
   it("reflects the highlighted state", () => {
-    render(<AutocompleteOption killer={killer} highlighted onClick={() => {}} />);
+    render(<AutocompleteOption item={killer} highlighted onClick={() => {}} />);
     const option = screen.getByRole("option");
     expect(option).toHaveAttribute("aria-selected", "true");
     expect(option.className).toContain("bg-surface-3");

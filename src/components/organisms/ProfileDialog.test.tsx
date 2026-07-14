@@ -13,6 +13,7 @@ const profile: MyProfile = {
   nick: "dead",
   channelUrl: null,
   mainKiller: null,
+  mainSurv: null,
   isPublic: true,
 };
 
@@ -75,6 +76,7 @@ describe("ProfileDialog", () => {
         nick: "dead",
         channelUrl: null,
         mainKillerId: null,
+        mainSurvId: null,
       })
     );
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));

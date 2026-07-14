@@ -1,32 +1,35 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { KillerStats } from "@/types/killer";
 
-interface UseAutocompleteReturn {
+export interface AutocompleteItem {
+  id: number;
+  name: string;
+  imageUrl: string;
+}
+
+interface UseAutocompleteReturn<T> {
   query: string;
   setQuery: (q: string) => void;
-  selected: KillerStats | null;
-  suggestions: KillerStats[];
+  selected: T | null;
+  suggestions: T[];
   isOpen: boolean;
   highlightedIndex: number;
   containerRef: React.RefObject<HTMLDivElement | null>;
-  selectKiller: (killer: KillerStats) => void;
+  select: (item: T) => void;
   clearSelection: () => void;
   handleKeyDown: (e: React.KeyboardEvent) => void;
 }
 
-export function useAutocomplete(killers: KillerStats[]): UseAutocompleteReturn {
+export function useAutocomplete<T extends AutocompleteItem>(items: T[]): UseAutocompleteReturn<T> {
   const [query, setQueryRaw] = useState("");
-  const [selected, setSelected] = useState<KillerStats | null>(null);
+  const [selected, setSelected] = useState<T | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const suggestions = query.trim()
-    ? killers.filter((k) =>
-        k.name.toLowerCase().includes(query.toLowerCase())
-      )
+    ? items.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))
     : [];
 
   function setQuery(q: string) {
@@ -36,9 +39,9 @@ export function useAutocomplete(killers: KillerStats[]): UseAutocompleteReturn {
     setHighlightedIndex(-1);
   }
 
-  function selectKiller(killer: KillerStats) {
-    setSelected(killer);
-    setQueryRaw(killer.name);
+  function select(item: T) {
+    setSelected(item);
+    setQueryRaw(item.name);
     setIsOpen(false);
     setHighlightedIndex(-1);
   }
@@ -64,7 +67,7 @@ export function useAutocomplete(killers: KillerStats[]): UseAutocompleteReturn {
     }
     if (e.key === "Enter" && highlightedIndex >= 0) {
       e.preventDefault();
-      selectKiller(suggestions[highlightedIndex]);
+      select(suggestions[highlightedIndex]);
       return;
     }
     if (e.key === "Escape") {
@@ -90,7 +93,7 @@ export function useAutocomplete(killers: KillerStats[]): UseAutocompleteReturn {
     isOpen,
     highlightedIndex,
     containerRef,
-    selectKiller,
+    select,
     clearSelection,
     handleKeyDown,
   };

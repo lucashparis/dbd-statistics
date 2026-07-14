@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { KillerAutocomplete } from "@/components/organisms/KillerAutocomplete";
+import { EntityAutocomplete } from "@/components/organisms/EntityAutocomplete";
 import { KillerDetailPanel } from "@/components/organisms/KillerDetailPanel";
 import { StatisticsOverview } from "@/components/organisms/StatisticsOverview";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
@@ -22,7 +22,7 @@ export function StatisticsTabTemplate({ killers, isLoading, statsNav, onNavigate
 
   React.useEffect(() => {
     if (statsNav) {
-      autocomplete.selectKiller(statsNav.killer);
+      autocomplete.select(statsNav.killer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statsNav?.nonce]);
@@ -38,11 +38,13 @@ export function StatisticsTabTemplate({ killers, isLoading, statsNav, onNavigate
 
   return (
     <div className="space-y-6">
-      <KillerAutocomplete
-        killers={killers}
+      <EntityAutocomplete
         {...autocomplete}
         placeholder="Filter statistics by killer..."
         className="max-w-sm"
+        searchLabel="Search killers"
+        suggestionsLabel="Killer suggestions"
+        notFoundLabel="No killers found for"
       />
 
       {autocomplete.selected && (

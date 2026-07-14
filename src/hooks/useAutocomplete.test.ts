@@ -42,10 +42,10 @@ describe("useAutocomplete", () => {
     expect(result.current.suggestions).toHaveLength(0);
   });
 
-  it("selectKiller sets selected, updates query and closes dropdown", () => {
+  it("select sets selected, updates query and closes dropdown", () => {
     const { result } = renderHook(() => useAutocomplete(killers));
     act(() => result.current.setQuery("trap"));
-    act(() => result.current.selectKiller(killers[0]));
+    act(() => result.current.select(killers[0]));
     expect(result.current.selected).toBe(killers[0]);
     expect(result.current.query).toBe("Trapper");
     expect(result.current.isOpen).toBe(false);
@@ -53,7 +53,7 @@ describe("useAutocomplete", () => {
 
   it("clearSelection resets all state", () => {
     const { result } = renderHook(() => useAutocomplete(killers));
-    act(() => result.current.selectKiller(killers[0]));
+    act(() => result.current.select(killers[0]));
     act(() => result.current.clearSelection());
     expect(result.current.selected).toBeNull();
     expect(result.current.query).toBe("");

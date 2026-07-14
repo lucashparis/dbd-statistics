@@ -32,7 +32,7 @@ Dead by Daylight killer statistics tracker. Authenticated users register wins an
 ```
 atoms/       — primitive, stateless UI (Button, Badge, ProgressBar, Spinner…)
 molecules/   — composed atoms with local logic (WinRateBadge, StatItem, TabNav…)
-organisms/   — feature-level sections (KillerCard, KillerGrid, KillerAutocomplete…)
+organisms/   — feature-level sections (KillerCard, KillerGrid, EntityAutocomplete…)
 templates/   — layout wrappers (AppShell, KillersTabTemplate, StatisticsTabTemplate)
 ```
 
@@ -48,7 +48,7 @@ All server-state hooks are built on **TanStack Query v5** (`@tanstack/react-quer
 - `usePlayers` / `useTeams` / `useTeamStreaks` — roster and team-streak state (`useQuery` gated by `enabled: isActive` + mutations that update the cache; team-streak writes also call `invalidateMatchDerived`).
 - `useProfile` — the current user's community profile (`useQuery` on `['profile']`) + `save`/`remove` mutations (PUT/DELETE `/api/profile`); on success updates the `['profile']` cache and invalidates `['community']`.
 - `useCommunity` — paginated public profile list via `useInfiniteQuery` (`enabled: isActive`), same shape as `useHistory` (`profiles`, `hasMore`, `loadMore`, `retry`).
-- `useAutocomplete` — search autocomplete with keyboard nav (↑↓ Enter Escape) and click-outside dismissal. Pure client state — not a server-state hook.
+- `useAutocomplete<T extends AutocompleteItem>` — generic search autocomplete with keyboard nav (↑↓ Enter Escape) and click-outside dismissal. Pure client state — not a server-state hook. Works with any `{ id, name, imageUrl }` item; rendered by the generic `EntityAutocomplete` organism (used for both killers and survivors).
 
 **Cache invalidation:** any `Match`-writing mutation (killer win/loss/undo, team-streak launch/delete) calls `invalidateMatchDerived(queryClient)` → invalidates `killers` + `history` + `streaks` (all derive from `Match`, filtered only by `userId`). Roster mutations update their own list cache via `setQueryData`.
 
@@ -73,18 +73,19 @@ Multi-user schema. Full model in `prisma/schema.prisma`:
 
 - `User` — account (email unique, bcrypt `password`). Owns players, teams, matches, streaks.
 - `Killer` — the roster. **No `wins`/`losses` columns** — counts are derived from `Match`.
+- `Survivor` — the survivor roster (reference table, `name` unique + `imageUrl`). Mirrors `Killer` but is **not** tied to `Match`. Seeded from the DBD wiki; referenced by `Profile.mainSurvId` (surfaced in the profile form as "Main survivor").
 - `Player` — a named player/nick owned by a user (`@@unique([userId, nick])`).
 - `Team` — a user's team (`@@unique([userId, name])`); has members via `TeamPlayer`.
 - `TeamPlayer` — join table (composite id `[teamId, playerId]`).
 - `Match` — one recorded game: `killerId`, `result` (`win | loss`), optional `userId`, `teamId`, `streakRunId`. **The source of truth for all win/loss/streak stats.**
 - `StreakRun` — a team's win streak (`winCount`, `status` = `active | ended`).
-- `Profile` — a user's **public** community profile (1:1 with `User`, `userId @unique`). Fields: `nick`, `channelUrl?`, `mainKillerId?` (FK → `Killer`, `onDelete: SetNull`). **The presence of the row is the consent signal** — a user with no `Profile` is invisible to the community. `name` is not duplicated here; it lives on `User.name` and is edited in the same profile form. `mainSurvId` is intentionally absent until a `Survivor` table exists.
+- `Profile` — a user's **public** community profile (1:1 with `User`, `userId @unique`). Fields: `nick`, `channelUrl?`, `mainKillerId?` (FK → `Killer`, `onDelete: SetNull`). **The presence of the row is the consent signal** — a user with no `Profile` is invisible to the community. `name` is not duplicated here; it lives on `User.name` and is edited in the same profile form. `mainSurvId?` (FK → `Survivor`, `onDelete: SetNull`) is edited in the same profile form ("Main survivor") and persisted by `PUT /api/profile`. Note: `mainSurv` is **not** yet part of the public community projection (`src/lib/community.ts`) — it round-trips on the owner's `MyProfile` only.
 
 > **ADR (resolves audit M17): `Match` is the single source of truth.** `Killer` deliberately has **no** denormalized `wins`/`losses`. Any aggregate (grid, pie chart, history, streaks) must derive from `Match` via `getKillersForUser`/`getKillerForUser` in `src/lib/killers.ts`. Do **not** re-introduce counter columns — that reopens the drift bug this design eliminated.
 
 > **Note:** `Match.userId` is currently optional (`String?`), a migration artifact. All queries filter by `userId`, so a null-`userId` match is invisible (orphaned). Prefer setting `userId` on every write.
 
-**Seeded with 44 killers.** Run `npm run db:seed` to repopulate. The seed upserts by `name` and only sets `name`/`imageUrl` (any `wins`/`losses` fields in the seed array are legacy and ignored). Most images come from `static.wikia.nocookie.net`; a few are local under `/public/images/killers/`. Remote hosts are allowlisted in `next.config.ts`.
+**Seeded with 43 killers and 46 survivors.** Run `npm run db:seed` to repopulate. The seed upserts by `name` and only sets `name`/`imageUrl`. **The killer array is mirrored from the production DB** (personalized names + local `/public/images/killers/*.webp`), so re-seeding is idempotent against the real data — do **not** "normalize" the killer names to English or point them back at wiki URLs (that reopens the incident where a seed run renamed killers and created duplicate rows). Survivor images come from `static.wikia.nocookie.net`. Remote hosts are allowlisted in `next.config.ts`.
 
 ### Useful DB scripts
 
@@ -104,6 +105,7 @@ Every route below (except NextAuth's own handler and `signup`) requires a sessio
 | Method | Path | Action |
 |--------|------|--------|
 | GET | `/api/killers` | List killers with the user's derived win/loss counts |
+| GET | `/api/survivors` | List survivors (`id`/`name`/`imageUrl`, ordered by name) — options for the profile form |
 | PATCH | `/api/killers/[id]/win` | Record a win (create a `Match`) |
 | PATCH | `/api/killers/[id]/loss` | Record a loss (create a `Match`) |
 | PATCH | `/api/killers/[id]/win/undo` | Delete the user's last non-streak win `Match` |
@@ -117,7 +119,7 @@ Every route below (except NextAuth's own handler and `signup`) requires a sessio
 | GET | `/api/streaks` | List team streaks |
 | POST | `/api/streaks/matches` | Add a match to a streak run |
 | DELETE | `/api/streaks/matches/[id]` | Remove a streak match |
-| GET / PUT / DELETE | `/api/profile` | Read / upsert / remove the current user's community profile (`PUT` validates `channelUrl` as https, checks the main killer exists, updates `User.name` + upserts `Profile` in a `$transaction`, then `revalidateTag("community"/"profile:<id>", "max")`) |
+| GET / PUT / DELETE | `/api/profile` | Read / upsert / remove the current user's community profile (`PUT` validates `channelUrl` as https, checks the main killer **and main survivor** exist, updates `User.name` + upserts `Profile` in a `$transaction`, then `revalidateTag("community"/"profile:<id>", "max")`) |
 | GET | `/api/community/profiles` | Paginated list of public profile summaries (Community tab) |
 | POST | `/api/signup` | Create an account (public) |
 | GET / POST | `/api/auth/[...nextauth]` | NextAuth handlers |
@@ -243,7 +245,7 @@ src/app/api/killers/route.ts  → src/app/api/killers/route.test.ts
 
 All user-facing text must be in **English** — labels, headings, descriptions, empty states, button text, and any other copy visible to the user. Do not use Portuguese or any other language in the UI. Date/time formatting may use `pt-BR` locale.
 
-> Known exception pending cleanup (audit B11): a few killer names in `prisma/seed.ts` still carry Portuguese parentheticals (e.g. "Trapper (Caçador)"). Normalize to English when touched.
+> Exception (supersedes audit B11): killer names are **user-owned roster data**, not translatable UI copy. The seed mirrors the production roster verbatim, which intentionally carries Portuguese and personalized names (e.g. "Caça Coroas", "BrenoGorgon", "Trapalisson (Trapaça)"). Do **not** normalize these to English — that would overwrite the user's real data. This rule applies to static UI copy, not to roster rows.
 
 ---
 

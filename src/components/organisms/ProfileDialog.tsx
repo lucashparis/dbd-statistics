@@ -4,11 +4,12 @@ import * as React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { X, Trash2 } from "lucide-react";
-import { KillerAutocomplete } from "@/components/organisms/KillerAutocomplete";
+import { EntityAutocomplete } from "@/components/organisms/EntityAutocomplete";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
 import { Button } from "@/components/atoms/Button";
 import { computeStats } from "@/lib/utils";
 import type { Killer, KillerStats } from "@/types/killer";
+import type { Survivor } from "@/types/survivor";
 import type { MyProfile, ProfileInput } from "@/types/profile";
 
 interface ProfileDialogProps {
@@ -26,6 +27,12 @@ async function fetchKillerOptions(): Promise<KillerStats[]> {
   if (!res.ok) throw new Error("Failed to load killers");
   const killers = (await res.json()) as Killer[];
   return killers.map(computeStats);
+}
+
+async function fetchSurvivorOptions(): Promise<Survivor[]> {
+  const res = await fetch("/api/survivors");
+  if (!res.ok) throw new Error("Failed to load survivors");
+  return (await res.json()) as Survivor[];
 }
 
 function isHttpsUrl(value: string): boolean {
@@ -54,7 +61,12 @@ function ProfileForm({ profile, onSave, saving, onRemove, removing, onClose }: P
     queryKey: ["killer-options"],
     queryFn: fetchKillerOptions,
   });
-  const autocomplete = useAutocomplete(killers);
+  const { data: survivors = [] } = useQuery({
+    queryKey: ["survivor-options"],
+    queryFn: fetchSurvivorOptions,
+  });
+  const killerAutocomplete = useAutocomplete(killers);
+  const survivorAutocomplete = useAutocomplete(survivors);
 
   const [name, setName] = React.useState(() => profile?.name ?? "");
   const [nick, setNick] = React.useState(() => profile?.nick ?? "");
@@ -64,9 +76,16 @@ function ProfileForm({ profile, onSave, saving, onRemove, removing, onClose }: P
   React.useEffect(() => {
     if (!profile?.mainKiller || killers.length === 0) return;
     const match = killers.find((k) => k.id === profile.mainKiller?.id);
-    if (match) autocomplete.selectKiller(match);
+    if (match) killerAutocomplete.select(match);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.mainKiller?.id, killers.length]);
+
+  React.useEffect(() => {
+    if (!profile?.mainSurv || survivors.length === 0) return;
+    const match = survivors.find((s) => s.id === profile.mainSurv?.id);
+    if (match) survivorAutocomplete.select(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.mainSurv?.id, survivors.length]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -84,7 +103,8 @@ function ProfileForm({ profile, onSave, saving, onRemove, removing, onClose }: P
       name: name.trim() || undefined,
       nick: trimmedNick,
       channelUrl: trimmedUrl || null,
-      mainKillerId: autocomplete.selected?.id ?? null,
+      mainKillerId: killerAutocomplete.selected?.id ?? null,
+      mainSurvId: survivorAutocomplete.selected?.id ?? null,
     });
     if (ok) onClose();
   }
@@ -127,10 +147,23 @@ function ProfileForm({ profile, onSave, saving, onRemove, removing, onClose }: P
 
       <div className="space-y-1.5">
         <span className={labelClass}>Main killer</span>
-        <KillerAutocomplete
-          killers={killers}
-          {...autocomplete}
+        <EntityAutocomplete
+          {...killerAutocomplete}
           placeholder="Search your main killer..."
+          searchLabel="Search killers"
+          suggestionsLabel="Killer suggestions"
+          notFoundLabel="No killers found for"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <span className={labelClass}>Main survivor</span>
+        <EntityAutocomplete
+          {...survivorAutocomplete}
+          placeholder="Search your main survivor..."
+          searchLabel="Search survivors"
+          suggestionsLabel="Survivor suggestions"
+          notFoundLabel="No survivors found for"
         />
       </div>
 
@@ -195,7 +228,7 @@ export function ProfileDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-subtle bg-surface p-6 shadow-2xl shadow-black/60 scrollbar-dark">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-subtle bg-surface p-6 shadow-2xl shadow-black/60 scrollbar-dark">
           <div className="mb-1 flex items-center justify-between">
             <Dialog.Title className="font-display text-lg font-bold uppercase tracking-widest text-white">
               Your profile

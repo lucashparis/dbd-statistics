@@ -42,6 +42,15 @@ model Killer {
   profiles  Profile[]
 }
 
+model Survivor {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  imageUrl  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  profiles  Profile[]
+}
+
 // A user's public community profile. The existence of this row means the user
 // opted in to being publicly discoverable (carousel + community tab). Only
 // whitelisted fields are ever exposed publicly — never email/password.
@@ -51,12 +60,15 @@ model Profile {
   nick         String
   channelUrl   String?
   mainKillerId Int?
+  mainSurvId   Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mainKiller   Killer?  @relation(fields: [mainKillerId], references: [id], onDelete: SetNull)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mainKiller   Killer?   @relation(fields: [mainKillerId], references: [id], onDelete: SetNull)
+  mainSurv     Survivor? @relation(fields: [mainSurvId], references: [id], onDelete: SetNull)
 
   @@index([mainKillerId])
+  @@index([mainSurvId])
 }
 
 model Player {

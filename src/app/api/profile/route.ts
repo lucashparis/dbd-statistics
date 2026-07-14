@@ -6,11 +6,12 @@ import { getSessionUserId } from "@/lib/auth-helpers";
 import { mutationError } from "@/lib/api";
 import type { MyProfile } from "@/types/profile";
 
-const killerRefSelect = { id: true, name: true, imageUrl: true } as const;
+const entityRefSelect = { id: true, name: true, imageUrl: true } as const;
 const profileSelect = {
   nick: true,
   channelUrl: true,
-  mainKiller: { select: killerRefSelect },
+  mainKiller: { select: entityRefSelect },
+  mainSurv: { select: entityRefSelect },
 } as const;
 
 function isHttpsUrl(value: string): boolean {
@@ -31,6 +32,7 @@ const updateSchema = z.object({
     z.string().trim().max(300).refine(isHttpsUrl, "Must be a valid https URL").nullable()
   ),
   mainKillerId: z.preprocess(emptyToNull, z.coerce.number().int().positive().nullable()),
+  mainSurvId: z.preprocess(emptyToNull, z.coerce.number().int().positive().nullable()),
 });
 
 export async function GET() {
@@ -48,6 +50,7 @@ export async function GET() {
       nick: profile?.nick ?? "",
       channelUrl: profile?.channelUrl ?? null,
       mainKiller: profile?.mainKiller ?? null,
+      mainSurv: profile?.mainSurv ?? null,
       isPublic: profile !== null,
     };
     return NextResponse.json(payload);
@@ -67,7 +70,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const { name, nick, channelUrl, mainKillerId } = parsed.data;
+  const { name, nick, channelUrl, mainKillerId, mainSurvId } = parsed.data;
 
   if (mainKillerId != null) {
     const killer = await prisma.killer.findUnique({
@@ -79,6 +82,16 @@ export async function PUT(req: Request) {
     }
   }
 
+  if (mainSurvId != null) {
+    const survivor = await prisma.survivor.findUnique({
+      where: { id: mainSurvId },
+      select: { id: true },
+    });
+    if (!survivor) {
+      return NextResponse.json({ error: "Survivor not found" }, { status: 404 });
+    }
+  }
+
   try {
     const { user, profile } = await prisma.$transaction(async (tx) => {
       const user =
@@ -87,8 +100,8 @@ export async function PUT(req: Request) {
           : await tx.user.findUnique({ where: { id: userId }, select: { name: true } });
       const profile = await tx.profile.upsert({
         where: { userId },
-        create: { userId, nick, channelUrl, mainKillerId },
-        update: { nick, channelUrl, mainKillerId },
+        create: { userId, nick, channelUrl, mainKillerId, mainSurvId },
+        update: { nick, channelUrl, mainKillerId, mainSurvId },
         select: profileSelect,
       });
       return { user, profile };
@@ -102,6 +115,7 @@ export async function PUT(req: Request) {
       nick: profile.nick,
       channelUrl: profile.channelUrl,
       mainKiller: profile.mainKiller,
+      mainSurv: profile.mainSurv,
       isPublic: true,
     };
     return NextResponse.json(payload);

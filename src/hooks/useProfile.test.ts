@@ -11,6 +11,7 @@ const profile: MyProfile = {
   nick: "dead",
   channelUrl: null,
   mainKiller: null,
+  mainSurv: null,
   isPublic: true,
 };
 const mockFetch = vi.fn();

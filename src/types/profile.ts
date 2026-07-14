@@ -1,4 +1,5 @@
 import type { KillerStats, StreaksData } from "@/types/killer";
+import type { Survivor } from "@/types/survivor";
 
 export interface KillerRef {
   id: number;
@@ -21,6 +22,7 @@ export interface MyProfile {
   nick: string;
   channelUrl: string | null;
   mainKiller: KillerRef | null;
+  mainSurv: Survivor | null;
   isPublic: boolean;
 }
 
@@ -29,6 +31,7 @@ export interface ProfileInput {
   nick: string;
   channelUrl?: string | null;
   mainKillerId?: number | null;
+  mainSurvId?: number | null;
 }
 
 // Public projection — never carries email/password.

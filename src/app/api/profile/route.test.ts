@@ -11,6 +11,7 @@ vi.mock("@/lib/prisma", () => ({
     user: { findUnique: vi.fn(), update: vi.fn() },
     profile: { findUnique: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
     killer: { findUnique: vi.fn() },
+    survivor: { findUnique: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -43,6 +44,7 @@ describe("GET /api/profile", () => {
       nick: "",
       channelUrl: null,
       mainKiller: null,
+      mainSurv: null,
       isPublic: false,
     });
   });
@@ -93,6 +95,11 @@ describe("PUT /api/profile", () => {
   it("returns 404 when the main killer does not exist", async () => {
     vi.mocked(prisma.killer.findUnique).mockResolvedValueOnce(null);
     expect((await PUT(put({ nick: "dead", mainKillerId: 999 }))).status).toBe(404);
+  });
+
+  it("returns 404 when the main survivor does not exist", async () => {
+    vi.mocked(prisma.survivor.findUnique).mockResolvedValueOnce(null);
+    expect((await PUT(put({ nick: "dead", mainSurvId: 999 }))).status).toBe(404);
   });
 
   it("upserts the profile, updates the user name and revalidates caches", async () => {
