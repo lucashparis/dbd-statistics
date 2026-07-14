@@ -41,8 +41,8 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 |-----------|-------|-------------|-----------|------------|
 | 🔴 ALTO   | 3     | 3           | 0         | 0          |
 | 🟠 MÉDIO  | 19    | 18          | 1         | 0          |
-| 🟢 BAIXO  | 13    | 9           | 4         | 0          |
-| **Total** | **35**| **30**      | **4**     | **0**      |
+| 🟢 BAIXO  | 13    | 10          | 3         | 0          |
+| **Total** | **35**| **31**      | **3**     | **0**      |
 
 > ✅ **Fases 0 (ALTO), 1 (gate), 2 (API & dados), 3 (segurança/hardening), 4 (Next.js & performance) e 5 (acessibilidade AA)** fechadas.
 > ✅ **M1/M17/M18 pelo refactor; M2 (rate limit, verificado ao vivo) + M3 (headers/CSP); M8 (boundaries) + M9 (skeleton) + M10 (imagens).**
@@ -267,11 +267,12 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Resíduo mínimo:** trocar 1 win por 1 loss mantém `total` constante e não dispara refetch (edge case).
 - **Status:** ✅ Concluído (o problema descrito foi eliminado).
 
-### 🟡 B7 — Animation-delay escala com índice global
-- **Arquivo:** `src/components/molecules/MatchItem.tsx:25`
-- **Situação (verificada):** antes ~800ms+; hoje `animationDelay: ${index * 40}ms`. Ainda **escala com o índice global** (sem teto e sem reset por página) → itens tardios do "Load more" ainda atrasam.
-- **Correção:** delay relativo à página **ou** teto (ex.: `Math.min(index, 8) * 40`).
-- **Status:** 🟡 Parcial — severidade reduzida.
+### ✅ B7 — Animation-delay escala com índice global
+- **Arquivo:** `src/components/molecules/MatchItem.tsx`
+- **Situação (original):** `animationDelay: ${index * 40}ms` escalava com o índice **global** achatado (`MatchHistoryList` passa `i` da lista concatenada de páginas) → sem teto e sem reset por página, itens tardios do "Load more" esperavam 1,6s / 3,2s+ pra fazer fade-in.
+- **Feito (2026-07-14):** teto aplicado — `animationDelay: ${Math.min(index, 8) * 40}ms`. Os 8 primeiros itens ainda cascateiam (0→320ms); todo o resto entra no cap de **320ms**. Descartada a cascata page-relative (exigiria índice relativo do pai — não vale pra efeito cosmético).
+- **DoD:** ✅ teste co-locado **criado** (`MatchItem.test.tsx`, antes inexistente) — Victory/Defeat badge + stagger por índice (`index=3` → `120ms`) + **teto** (`index=50` → `320ms`). Gate: `test` ✅ (4) · `tsc` ✅ (0) · `eslint` ✅ (0 erros; 1 warning `<img>` no mock, padrão aceito).
+- **Status:** ✅ Concluído.
 
 ### ✅ B8 — `KillerCard` clicável (role=button) sem foco visível
 - **Arquivo:** `src/components/organisms/KillerCard.tsx`
@@ -361,5 +362,5 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 ---
 
 _Última atualização: 2026-07-13 — Fase 5 (a11y AA) + N1 (TanStack Query) concluídos._
-_Última atualização: 2026-07-14 — B1 concluído._
-_Progresso: 30/35 concluídos, 5/35 parciais, 0 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros) · `tsc --noEmit` ✅ (0 erros) · `test` ✅ · `build` ✅. Fases 0–5 + N1 concluídos. Nenhuma pendência 🔴/🟠 aberta. Parciais restantes (🟢 dívida técnica): B6 (migração ESLint 8→9), B7 (animation-delay), B11 (nomes PT no seed), B12 (`<Image src="">` no KillerDetailPanel). Adiado conscientemente: M16 (branch protection — projeto solo). Ações de ops (M2/I4) fechadas._
+_Última atualização: 2026-07-14 — B1 e B7 concluídos._
+_Progresso: 31/35 concluídos, 4/35 parciais, 0 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros) · `tsc --noEmit` ✅ (0 erros) · `test` ✅ · `build` ✅. Fases 0–5 + N1 concluídos. Nenhuma pendência 🔴/🟠 aberta. Parciais restantes (🟢 dívida técnica): B6 (migração ESLint 8→9), B11 (nomes PT no seed), B12 (`<Image src="">` no KillerDetailPanel). Adiado conscientemente: M16 (branch protection — projeto solo). Ações de ops (M2/I4) fechadas._

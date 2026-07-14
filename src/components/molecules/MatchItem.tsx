@@ -22,7 +22,7 @@ export function MatchItem({ match, index }: MatchItemProps) {
   return (
     <li
       className="flex items-center gap-4 px-4 py-3 rounded-lg bg-surface border border-subtle animate-[fadeInUp_0.3s_ease_both]"
-      style={{ animationDelay: `${index * 40}ms` }}
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
     >
       <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden border border-subtle">
         <Image
