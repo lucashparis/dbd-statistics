@@ -4,15 +4,20 @@ import type { Session } from "next-auth";
 import HomePage from "@/app/page";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { getPublicProfiles } from "@/lib/community";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+vi.mock("@/lib/community", () => ({ getPublicProfiles: vi.fn() }));
 
 const SESSION: Session = { user: { id: "u1" }, expires: "2999-01-01T00:00:00.000Z" };
 const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>);
 
 describe("HomePage (splash)", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getPublicProfiles).mockResolvedValue([]);
+  });
 
   it("shows the splash with an Enter CTA when unauthenticated", async () => {
     authMock.mockResolvedValueOnce(null);

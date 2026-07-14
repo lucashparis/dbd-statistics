@@ -7,6 +7,8 @@ export const queryKeys = {
   players: ["players"] as const,
   teams: ["teams"] as const,
   teamStreaks: ["teamStreaks"] as const,
+  profile: ["profile"] as const,
+  community: ["community"] as const,
 };
 
 // A `Match` write feeds every match-derived read: the killer grid/pie,

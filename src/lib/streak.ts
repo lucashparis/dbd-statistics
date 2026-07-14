@@ -1,6 +1,8 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { serializeTeam } from "@/lib/teams";
-import type { MatchResult } from "@/types/killer";
+import { computeStreaks } from "@/lib/utils";
+import type { MatchResult, StreaksData } from "@/types/killer";
 import type { TeamStreak } from "@/types/team";
 
 export interface StreakAction {
@@ -126,6 +128,45 @@ export async function getTeamStreaks(userId: string): Promise<TeamStreak[]> {
       matches.filter((m) => m.teamId === team.id)
     )
   );
+}
+
+// Longest win/loss runs, global and per-killer, derived from the user's matches
+// in chronological order. Shared by /api/stats/streaks and the public profile.
+export async function computeStreaksForUser(userId: string): Promise<StreaksData> {
+  const matches = await prisma.match.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: { killerId: true, result: true },
+  });
+
+  const global = computeStreaks(matches.map((m) => m.result));
+
+  const byKiller = new Map<number, MatchResult[]>();
+  for (const match of matches) {
+    const list = byKiller.get(match.killerId) ?? [];
+    list.push(match.result);
+    byKiller.set(match.killerId, list);
+  }
+
+  const perKiller: StreaksData["perKiller"] = {};
+  for (const [killerId, results] of byKiller) {
+    perKiller[killerId] = computeStreaks(results);
+  }
+
+  return { global, perKiller };
+}
+
+// Cached per user so the full recompute only runs when a match changes. Match
+// mutation routes call `revalidateTag("streaks:<userId>", "max")` to invalidate
+// it; `revalidate` is a time-based safety net if a tag call is ever missed.
+const STREAKS_TTL_SECONDS = 60;
+
+export function getStreaksForUser(userId: string): Promise<StreaksData> {
+  return unstable_cache(
+    () => computeStreaksForUser(userId),
+    ["streaks", userId],
+    { tags: [`streaks:${userId}`], revalidate: STREAKS_TTL_SECONDS }
+  )();
 }
 
 export async function getTeamStreak(userId: string, teamId: number): Promise<TeamStreak | null> {

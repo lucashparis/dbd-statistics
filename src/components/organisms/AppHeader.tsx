@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Skull } from "lucide-react";
-import { SignOutButton } from "@/components/molecules/SignOutButton";
+import { UserMenu } from "@/components/organisms/UserMenu";
 
 export function AppHeader() {
   return (
@@ -23,7 +23,7 @@ export function AppHeader() {
               </p>
             </div>
           </div>
-          <SignOutButton />
+          <UserMenu />
         </div>
       </div>
     </header>

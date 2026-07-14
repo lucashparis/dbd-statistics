@@ -10,6 +10,7 @@ const TABS = [
   { id: "statistics" as TabId, label: "Statistics" },
   { id: "team" as TabId, label: "Team" },
   { id: "history" as TabId, label: "History" },
+  { id: "community" as TabId, label: "Community" },
 ];
 
 interface AppShellProps {
@@ -18,11 +19,12 @@ interface AppShellProps {
   statisticsContent: React.ReactNode;
   teamContent: React.ReactNode;
   historyContent: React.ReactNode;
+  communityContent: React.ReactNode;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
 }
 
-export function AppShell({ killersContent, streakContent, statisticsContent, teamContent, historyContent, activeTab, onTabChange }: AppShellProps) {
+export function AppShell({ killersContent, streakContent, statisticsContent, teamContent, historyContent, communityContent, activeTab, onTabChange }: AppShellProps) {
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -45,6 +47,9 @@ export function AppShell({ killersContent, streakContent, statisticsContent, tea
         </div>
         <div role="tabpanel" hidden={activeTab !== "history"}>
           {historyContent}
+        </div>
+        <div role="tabpanel" hidden={activeTab !== "community"}>
+          {communityContent}
         </div>
       </main>
     </div>

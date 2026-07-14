@@ -2,9 +2,9 @@
 
 ## Project overview
 
-Dead by Daylight killer statistics tracker. Authenticated users register wins and losses per killer, manage rosters of players and teams, track win streaks, browse their match history, and visualize their stats through a pie chart. Built as a personal project with a dark horror theme.
+Dead by Daylight killer statistics tracker. Authenticated users register wins and losses per killer, manage rosters of players and teams, track win streaks, browse their match history, and visualize their stats through a pie chart. Built as a personal project with a dark horror theme. It also has a lightweight **community** layer: users can publish a profile (nick, main killer, channel link) to be discovered on a public home carousel and visited from a logged-in Community tab.
 
-**All data is per-user** and lives behind authentication. There is no shared/global data.
+**All match/roster data is per-user** and lives behind authentication. The **only** publicly exposed data is the opt-in community projection: a user becomes discoverable **only** by creating a `Profile` row, and only whitelisted fields (nick, name, channel link, main killer, aggregate stats) are ever served publicly — **never** `email`/`password`. See `src/lib/community.ts` for the single public read path.
 
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5 (strict) · PostgreSQL + Prisma 5 · NextAuth v5 (credentials) · Zod 4 · TanStack Query v5 · Tailwind CSS v4 · Radix UI · Recharts · Vitest
 
@@ -46,6 +46,8 @@ All server-state hooks are built on **TanStack Query v5** (`@tanstack/react-quer
 - `useHistory` — paginated match history via `useInfiniteQuery` (`enabled: isActive`); `matches` is the flattened pages, `loadMore` = `fetchNextPage`, `retry` = `refetch`, `error` from `isError`.
 - `useStreaks` — global + per-killer streaks via `useQuery`; degrades to an empty state on error. **No longer takes a signal** — freshness comes from `invalidateMatchDerived` on any `Match` write.
 - `usePlayers` / `useTeams` / `useTeamStreaks` — roster and team-streak state (`useQuery` gated by `enabled: isActive` + mutations that update the cache; team-streak writes also call `invalidateMatchDerived`).
+- `useProfile` — the current user's community profile (`useQuery` on `['profile']`) + `save`/`remove` mutations (PUT/DELETE `/api/profile`); on success updates the `['profile']` cache and invalidates `['community']`.
+- `useCommunity` — paginated public profile list via `useInfiniteQuery` (`enabled: isActive`), same shape as `useHistory` (`profiles`, `hasMore`, `loadMore`, `retry`).
 - `useAutocomplete` — search autocomplete with keyboard nav (↑↓ Enter Escape) and click-outside dismissal. Pure client state — not a server-state hook.
 
 **Cache invalidation:** any `Match`-writing mutation (killer win/loss/undo, team-streak launch/delete) calls `invalidateMatchDerived(queryClient)` → invalidates `killers` + `history` + `streaks` (all derive from `Match`, filtered only by `userId`). Roster mutations update their own list cache via `setQueryData`.
@@ -76,6 +78,7 @@ Multi-user schema. Full model in `prisma/schema.prisma`:
 - `TeamPlayer` — join table (composite id `[teamId, playerId]`).
 - `Match` — one recorded game: `killerId`, `result` (`win | loss`), optional `userId`, `teamId`, `streakRunId`. **The source of truth for all win/loss/streak stats.**
 - `StreakRun` — a team's win streak (`winCount`, `status` = `active | ended`).
+- `Profile` — a user's **public** community profile (1:1 with `User`, `userId @unique`). Fields: `nick`, `channelUrl?`, `mainKillerId?` (FK → `Killer`, `onDelete: SetNull`). **The presence of the row is the consent signal** — a user with no `Profile` is invisible to the community. `name` is not duplicated here; it lives on `User.name` and is edited in the same profile form. `mainSurvId` is intentionally absent until a `Survivor` table exists.
 
 > **ADR (resolves audit M17): `Match` is the single source of truth.** `Killer` deliberately has **no** denormalized `wins`/`losses`. Any aggregate (grid, pie chart, history, streaks) must derive from `Match` via `getKillersForUser`/`getKillerForUser` in `src/lib/killers.ts`. Do **not** re-introduce counter columns — that reopens the drift bug this design eliminated.
 
@@ -114,8 +117,12 @@ Every route below (except NextAuth's own handler and `signup`) requires a sessio
 | GET | `/api/streaks` | List team streaks |
 | POST | `/api/streaks/matches` | Add a match to a streak run |
 | DELETE | `/api/streaks/matches/[id]` | Remove a streak match |
+| GET / PUT / DELETE | `/api/profile` | Read / upsert / remove the current user's community profile (`PUT` validates `channelUrl` as https, checks the main killer exists, updates `User.name` + upserts `Profile` in a `$transaction`, then `revalidateTag("community"/"profile:<id>", "max")`) |
+| GET | `/api/community/profiles` | Paginated list of public profile summaries (Community tab) |
 | POST | `/api/signup` | Create an account (public) |
 | GET / POST | `/api/auth/[...nextauth]` | NextAuth handlers |
+
+**Public read path (no auth):** `src/lib/community.ts` — `getPublicProfiles({ limit })` (home carousel + community list) and `getPublicProfile(userId)` (public profile page). Both use `unstable_cache` (tags `community` / `profile:<id>`, `revalidate: 60`) and a **whitelisted Prisma `select`** (never `email`/`password`). The public home (`/`) and the gated `/community/[userId]` page call these lib functions directly server-side. Streak computation (`computeStreaksForUser` / `getStreaksForUser`) lives in `src/lib/streak.ts` and is shared by `/api/stats/streaks` and the public profile.
 
 Keep API handlers thin — auth check → validate input (Zod via `parseId`/`parsePage`) → DB call (Prisma singleton) → `mutationError` in the catch. Business/derivation logic belongs in `src/lib/`.
 

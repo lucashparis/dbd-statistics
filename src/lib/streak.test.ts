@@ -1,8 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { decideStreakAction, getTeamStreak, recomputeStreakRuns } from "@/lib/streak";
+import {
+  decideStreakAction,
+  getTeamStreak,
+  recomputeStreakRuns,
+  computeStreaksForUser,
+  getStreaksForUser,
+} from "@/lib/streak";
 import type { MatchResult } from "@/types/killer";
 import { prisma } from "@/lib/prisma";
 
+vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     team: { findFirst: vi.fn() },
@@ -90,6 +97,44 @@ describe("recomputeStreakRuns", () => {
     expect(runs).toHaveLength(2);
     expect(runs[0]).toMatchObject({ winCount: 1, status: "ended", matchIds: [1, 2] });
     expect(runs[1]).toMatchObject({ winCount: 2, status: "active", endedAt: null, matchIds: [3, 4] });
+  });
+});
+
+describe("computeStreaksForUser", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns zeroed streaks when the user has no matches", async () => {
+    vi.mocked(prisma.match.findMany).mockResolvedValueOnce([]);
+    const result = await computeStreaksForUser("u1");
+    expect(result.global).toEqual({ longestWin: 0, longestLoss: 0 });
+    expect(result.perKiller).toEqual({});
+  });
+
+  it("computes global and per-killer streaks and scopes the query to the user", async () => {
+    vi.mocked(prisma.match.findMany).mockResolvedValueOnce([
+      { killerId: 1, result: "win" },
+      { killerId: 1, result: "win" },
+      { killerId: 2, result: "loss" },
+      { killerId: 1, result: "loss" },
+    ] as never);
+    const result = await computeStreaksForUser("u1");
+    expect(result.global).toEqual({ longestWin: 2, longestLoss: 2 });
+    expect(result.perKiller[1]).toEqual({ longestWin: 2, longestLoss: 1 });
+    expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1" }, orderBy: { createdAt: "asc" } })
+    );
+  });
+});
+
+describe("getStreaksForUser", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("resolves the cached streaks payload for the user", async () => {
+    vi.mocked(prisma.match.findMany).mockResolvedValueOnce([
+      { killerId: 1, result: "win" },
+    ] as never);
+    const result = await getStreaksForUser("u1");
+    expect(result.global.longestWin).toBe(1);
   });
 });
 
