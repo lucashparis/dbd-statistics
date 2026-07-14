@@ -81,7 +81,7 @@ export function CommunityCarousel({ profiles }: CommunityCarouselProps) {
 
       <div
         ref={trackRef}
-        className="flex snap-x snap-mandatory gap-4 overflow-x-auto scrollbar-dark pb-2"
+        className="-m-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scrollbar-dark p-4"
       >
         {profiles.map((profile) => (
           <div
