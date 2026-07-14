@@ -91,13 +91,18 @@ async function computePublicProfiles(limit: number): Promise<PublicProfileSummar
     .map(({ row, stats }) => toSummary(row, stats));
 }
 
-export function getPublicProfiles(opts: { limit: number }): Promise<PublicProfileSummary[]> {
+export async function getPublicProfiles(opts: { limit: number }): Promise<PublicProfileSummary[]> {
   const { limit } = opts;
-  return unstable_cache(
-    () => computePublicProfiles(limit),
-    ["community-profiles", String(limit)],
-    { tags: ["community"], revalidate: COMMUNITY_TTL_SECONDS }
-  )();
+  try {
+    return await unstable_cache(
+      () => computePublicProfiles(limit),
+      ["community-profiles", String(limit)],
+      { tags: ["community"], revalidate: COMMUNITY_TTL_SECONDS }
+    )();
+  } catch (e) {
+    console.error("getPublicProfiles failed", e);
+    return [];
+  }
 }
 
 async function computePublicProfile(userId: string): Promise<PublicProfileDetail | null> {
@@ -125,10 +130,15 @@ async function computePublicProfile(userId: string): Promise<PublicProfileDetail
   return { ...toSummary(profile, stats), killers, streaks };
 }
 
-export function getPublicProfile(userId: string): Promise<PublicProfileDetail | null> {
-  return unstable_cache(
-    () => computePublicProfile(userId),
-    ["community-profile", userId],
-    { tags: ["community", `profile:${userId}`], revalidate: COMMUNITY_TTL_SECONDS }
-  )();
+export async function getPublicProfile(userId: string): Promise<PublicProfileDetail | null> {
+  try {
+    return await unstable_cache(
+      () => computePublicProfile(userId),
+      ["community-profile", userId],
+      { tags: ["community", `profile:${userId}`], revalidate: COMMUNITY_TTL_SECONDS }
+    )();
+  } catch (e) {
+    console.error("getPublicProfile failed", e);
+    return null;
+  }
 }

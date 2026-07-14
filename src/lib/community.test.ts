@@ -72,6 +72,12 @@ describe("getPublicProfiles", () => {
     // u3 (zero matches) is pushed out by the limit
     expect(result.find((p) => p.userId === "u3")).toBeUndefined();
   });
+
+  it("degrades to an empty list when the database fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(prisma.profile.findMany).mockRejectedValueOnce(new Error("db down"));
+    expect(await getPublicProfiles({ limit: 12 })).toEqual([]);
+  });
 });
 
 describe("getPublicProfile", () => {
@@ -103,5 +109,11 @@ describe("getPublicProfile", () => {
     expect(detail?.stats).toEqual({ total: 5, wins: 4, losses: 1, winRate: 80 });
     expect(detail?.killers).toHaveLength(2);
     expect(detail?.streaks.global.longestWin).toBe(4);
+  });
+
+  it("degrades to null when the database fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(prisma.profile.findUnique).mockRejectedValueOnce(new Error("db down"));
+    expect(await getPublicProfile("u1")).toBeNull();
   });
 });
