@@ -3,17 +3,14 @@
 import * as React from "react";
 import { Swords, Skull, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EntityAutocomplete } from "@/components/organisms/EntityAutocomplete";
+import { useAutocomplete } from "@/hooks/useAutocomplete";
 import type { Team } from "@/types/team";
-import type { MatchResult } from "@/types/killer";
-
-interface KillerOption {
-  id: number;
-  name: string;
-}
+import type { KillerStats, MatchResult } from "@/types/killer";
 
 interface StreakLaunchFormProps {
   teams: Team[];
-  killers: KillerOption[];
+  killers: KillerStats[];
   launching: boolean;
   onLaunch: (teamId: number, killerId: number, result: MatchResult) => Promise<boolean>;
 }
@@ -23,13 +20,15 @@ const fieldClass =
 
 export function StreakLaunchForm({ teams, killers, launching, onLaunch }: StreakLaunchFormProps) {
   const [teamId, setTeamId] = React.useState<number | "">("");
-  const [killerId, setKillerId] = React.useState<number | "">("");
   const [result, setResult] = React.useState<MatchResult>("win");
+  const killerAutocomplete = useAutocomplete(killers);
+  const killerId = killerAutocomplete.selected?.id ?? "";
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (teamId === "" || killerId === "") return;
-    await onLaunch(Number(teamId), Number(killerId), result);
+    const ok = await onLaunch(Number(teamId), Number(killerId), result);
+    if (ok) killerAutocomplete.clearSelection();
   }
 
   if (teams.length === 0) {
@@ -59,19 +58,13 @@ export function StreakLaunchForm({ teams, killers, launching, onLaunch }: Streak
           ))}
         </select>
 
-        <select
-          aria-label="Killer faced"
-          value={killerId}
-          onChange={(e) => setKillerId(e.target.value === "" ? "" : Number(e.target.value))}
-          className={fieldClass}
-        >
-          <option value="">Select killer faced…</option>
-          {killers.map((k) => (
-            <option key={k.id} value={k.id}>
-              {k.name}
-            </option>
-          ))}
-        </select>
+        <EntityAutocomplete
+          {...killerAutocomplete}
+          placeholder="Search killer faced..."
+          searchLabel="Killer faced"
+          suggestionsLabel="Killer suggestions"
+          notFoundLabel="No killers found for"
+        />
 
         <div className="grid grid-cols-2 gap-2">
           <button
