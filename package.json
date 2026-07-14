@@ -38,7 +38,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^2.1.4",
     "@tailwindcss/postcss": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -49,8 +48,8 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.7.0",
     "babel-plugin-react-compiler": "^1.0.0",
-    "eslint": "^8",
-    "eslint-config-next": "15.0.3",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.10",
     "happy-dom": "^20.9.0",
     "prisma": "^5.22.0",
     "tailwindcss": "^4.0.0",

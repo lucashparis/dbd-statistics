@@ -4,14 +4,14 @@ const prisma = new PrismaClient();
 
 const killers = [
   {
-    name: "Trapper (Caçador)",
+    name: "Trapper",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/8/80/IconCharacters_Trapper.png/revision/latest",
     wins: 5,
     losses: 3,
   },
   {
-    name: "Wraith (Espectro)",
+    name: "Wraith",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/b/b0/IconCharacters_Wraith.png/revision/latest",
     wins: 3,
@@ -32,7 +32,7 @@ const killers = [
     losses: 2,
   },
   {
-    name: "Hag (Bruxa)",
+    name: "Hag",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/e/e9/IconCharacters_Hag.png/revision/latest",
     wins: 0,
@@ -46,7 +46,7 @@ const killers = [
     losses: 3,
   },
   {
-    name: "Huntress (Caçadora)",
+    name: "Huntress",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/0/07/IconCharacters_Huntress.png/revision/latest",
     wins: 2,
@@ -74,7 +74,7 @@ const killers = [
     losses: 2,
   },
   {
-    name: "Clown (Palhaço)",
+    name: "Clown",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/3/3c/IconCharacters_Clown.png/revision/latest",
     wins: 4,
@@ -95,7 +95,7 @@ const killers = [
     losses: 0,
   },
   {
-    name: "Plague (Praga)",
+    name: "Plague",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/e/ea/IconCharacters_Plague.png/revision/latest",
     wins: 2,
@@ -123,7 +123,7 @@ const killers = [
     losses: 0,
   },
   {
-    name: "Deathslinger (Mercenário)",
+    name: "Deathslinger",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/f/f1/IconCharacters_Deathslinger.png/revision/latest",
     wins: 1,
@@ -144,14 +144,14 @@ const killers = [
     losses: 2,
   },
   {
-    name: "Twins (Gêmeos)",
+    name: "Twins",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/e/e8/IconCharacters_Twins.png/revision/latest",
     wins: 0,
     losses: 1,
   },
   {
-    name: "Trickster (Trapaça)",
+    name: "Trickster",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/3/32/IconCharacters_Trickster.png/revision/latest",
     wins: 2,
@@ -172,7 +172,7 @@ const killers = [
     losses: 0,
   },
   {
-    name: "Artist (Artista)",
+    name: "Artist",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/6/6c/IconCharacters_Artist.png/revision/latest",
     wins: 4,
@@ -186,7 +186,7 @@ const killers = [
     losses: 0,
   },
   {
-    name: "Dredge (Draga)",
+    name: "Dredge",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/c/c2/IconCharacters_Dredge.png/revision/latest",
     wins: 0,
@@ -200,7 +200,7 @@ const killers = [
     losses: 2,
   },
   {
-    name: "Knight (Cavaleiro)",
+    name: "Knight",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/3/3d/IconCharacters_Knight.png/revision/latest",
     wins: 1,
@@ -214,14 +214,14 @@ const killers = [
     losses: 0,
   },
   {
-    name: "Singularity (Singularidade)",
+    name: "Singularity",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/8/88/IconCharacters_Singularity.png/revision/latest",
     wins: 0,
     losses: 1,
   },
   {
-    name: "Xenomorph (Xenomorfo)",
+    name: "Xenomorph",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/e/e5/IconCharacters_Xenomorph.png/revision/latest",
     wins: 1,
@@ -235,7 +235,7 @@ const killers = [
     losses: 1,
   },
   {
-    name: "Unknown (Desconhecido)",
+    name: "Unknown",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/e/ec/IconCharacters_Unknown.png/revision/latest",
     wins: 1,
@@ -256,7 +256,7 @@ const killers = [
     losses: 1,
   },
   {
-    name: "Houndmaster (Mestra Matilha)",
+    name: "Houndmaster",
     imageUrl:
       "https://static.wikia.nocookie.net/deadbydaylight/images/6/6e/IconCharacters_Houndmaster.png/revision/latest",
     wins: 1,
@@ -311,8 +311,40 @@ const killers = [
   },
 ];
 
+const legacyRenames: Record<string, string> = {
+  "Trapper (Caçador)": "Trapper",
+  "Wraith (Espectro)": "Wraith",
+  "Hag (Bruxa)": "Hag",
+  "Huntress (Caçadora)": "Huntress",
+  "Clown (Palhaço)": "Clown",
+  "Plague (Praga)": "Plague",
+  "Deathslinger (Mercenário)": "Deathslinger",
+  "Twins (Gêmeos)": "Twins",
+  "Trickster (Trapaça)": "Trickster",
+  "Artist (Artista)": "Artist",
+  "Dredge (Draga)": "Dredge",
+  "Knight (Cavaleiro)": "Knight",
+  "Singularity (Singularidade)": "Singularity",
+  "Xenomorph (Xenomorfo)": "Xenomorph",
+  "Unknown (Desconhecido)": "Unknown",
+  "Houndmaster (Mestra Matilha)": "Houndmaster",
+};
+
+async function migrateLegacyNames() {
+  for (const [oldName, newName] of Object.entries(legacyRenames)) {
+    const legacy = await prisma.killer.findUnique({ where: { name: oldName } });
+    if (!legacy) continue;
+    const current = await prisma.killer.findUnique({ where: { name: newName } });
+    if (current) continue;
+    await prisma.killer.update({ where: { name: oldName }, data: { name: newName } });
+    console.log(`↺ Renamed "${oldName}" → "${newName}"`);
+  }
+}
+
 async function main() {
   console.log("🩸 Seeding DBD killers...");
+
+  await migrateLegacyNames();
 
   for (const killer of killers) {
     await prisma.killer.upsert({

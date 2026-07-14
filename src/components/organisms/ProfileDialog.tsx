@@ -40,41 +40,33 @@ const inputClass =
   "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood/60";
 const labelClass = "block text-xs uppercase tracking-widest text-muted";
 
-export function ProfileDialog({
-  open,
-  onOpenChange,
-  profile,
-  onSave,
-  saving,
-  onRemove,
-  removing,
-}: ProfileDialogProps) {
+interface ProfileFormProps {
+  profile: MyProfile | null;
+  onSave: (input: ProfileInput) => Promise<boolean>;
+  saving: boolean;
+  onRemove: () => Promise<void>;
+  removing: boolean;
+  onClose: () => void;
+}
+
+function ProfileForm({ profile, onSave, saving, onRemove, removing, onClose }: ProfileFormProps) {
   const { data: killers = [] } = useQuery({
     queryKey: ["killer-options"],
     queryFn: fetchKillerOptions,
-    enabled: open,
   });
   const autocomplete = useAutocomplete(killers);
 
-  const [name, setName] = React.useState("");
-  const [nick, setNick] = React.useState("");
-  const [channelUrl, setChannelUrl] = React.useState("");
+  const [name, setName] = React.useState(() => profile?.name ?? "");
+  const [nick, setNick] = React.useState(() => profile?.nick ?? "");
+  const [channelUrl, setChannelUrl] = React.useState(() => profile?.channelUrl ?? "");
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!open) return;
-    setName(profile?.name ?? "");
-    setNick(profile?.nick ?? "");
-    setChannelUrl(profile?.channelUrl ?? "");
-    setError(null);
-  }, [open, profile]);
-
-  React.useEffect(() => {
-    if (!open || !profile?.mainKiller || killers.length === 0) return;
+    if (!profile?.mainKiller || killers.length === 0) return;
     const match = killers.find((k) => k.id === profile.mainKiller?.id);
     if (match) autocomplete.selectKiller(match);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, profile?.mainKiller?.id, killers.length]);
+  }, [profile?.mainKiller?.id, killers.length]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,14 +86,111 @@ export function ProfileDialog({
       channelUrl: trimmedUrl || null,
       mainKillerId: autocomplete.selected?.id ?? null,
     });
-    if (ok) onOpenChange(false);
+    if (ok) onClose();
   }
 
   async function handleRemove() {
     await onRemove();
-    onOpenChange(false);
+    onClose();
   }
 
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <label htmlFor="profile-name" className={labelClass}>
+          Name
+        </label>
+        <input
+          id="profile-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          placeholder="Your display name"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="profile-nick" className={labelClass}>
+          Nick <span className="text-blood">*</span>
+        </label>
+        <input
+          id="profile-nick"
+          value={nick}
+          onChange={(e) => setNick(e.target.value)}
+          maxLength={40}
+          required
+          placeholder="In-game nick"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <span className={labelClass}>Main killer</span>
+        <KillerAutocomplete
+          killers={killers}
+          {...autocomplete}
+          placeholder="Search your main killer..."
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="profile-channel" className={labelClass}>
+          Channel link
+        </label>
+        <input
+          id="profile-channel"
+          value={channelUrl}
+          onChange={(e) => setChannelUrl(e.target.value)}
+          inputMode="url"
+          maxLength={300}
+          placeholder="https://twitch.tv/you"
+          className={inputClass}
+        />
+      </div>
+
+      {error && (
+        <p role="alert" className="text-xs text-blood">
+          {error}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between gap-3 pt-2">
+        {profile?.isPublic ? (
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={removing}
+            className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-blood disabled:opacity-50"
+          >
+            <Trash2 size={14} />
+            Remove profile
+          </button>
+        ) : (
+          <span />
+        )}
+        <div className="flex gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" loading={saving}>
+            Save
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+export function ProfileDialog({
+  open,
+  onOpenChange,
+  profile,
+  onSave,
+  saving,
+  onRemove,
+  removing,
+}: ProfileDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -123,90 +212,14 @@ export function ProfileDialog({
             community. Remove it anytime to go private again.
           </Dialog.Description>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="profile-name" className={labelClass}>
-                Name
-              </label>
-              <input
-                id="profile-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={60}
-                placeholder="Your display name"
-                className={inputClass}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="profile-nick" className={labelClass}>
-                Nick <span className="text-blood">*</span>
-              </label>
-              <input
-                id="profile-nick"
-                value={nick}
-                onChange={(e) => setNick(e.target.value)}
-                maxLength={40}
-                required
-                placeholder="In-game nick"
-                className={inputClass}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <span className={labelClass}>Main killer</span>
-              <KillerAutocomplete
-                killers={killers}
-                {...autocomplete}
-                placeholder="Search your main killer..."
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="profile-channel" className={labelClass}>
-                Channel link
-              </label>
-              <input
-                id="profile-channel"
-                value={channelUrl}
-                onChange={(e) => setChannelUrl(e.target.value)}
-                inputMode="url"
-                maxLength={300}
-                placeholder="https://twitch.tv/you"
-                className={inputClass}
-              />
-            </div>
-
-            {error && (
-              <p role="alert" className="text-xs text-blood">
-                {error}
-              </p>
-            )}
-
-            <div className="flex items-center justify-between gap-3 pt-2">
-              {profile?.isPublic ? (
-                <button
-                  type="button"
-                  onClick={handleRemove}
-                  disabled={removing}
-                  className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-blood disabled:opacity-50"
-                >
-                  <Trash2 size={14} />
-                  Remove profile
-                </button>
-              ) : (
-                <span />
-              )}
-              <div className="flex gap-2">
-                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" loading={saving}>
-                  Save
-                </Button>
-              </div>
-            </div>
-          </form>
+          <ProfileForm
+            profile={profile}
+            onSave={onSave}
+            saving={saving}
+            onRemove={onRemove}
+            removing={removing}
+            onClose={() => onOpenChange(false)}
+          />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

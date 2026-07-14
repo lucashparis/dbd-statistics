@@ -49,7 +49,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 > ✅ **Fase 5 (2026-07-13):** M12 (combobox APG) + M13 (paleta categórica distinguível + `role="img"`) + M14 (`prefers-reduced-motion`) + M15 (contraste AA) + B8 (focus ring) + B9 (label da busca) + B10 (hex→tokens). Gate atual: `lint` ✅ (0 erros) · `test` ✅ (318) · `tsc --noEmit` ✅ (0 erros).
 > ✅ **N1 (React Query) — 2026-07-13:** os 6 hooks migrados para TanStack Query v5 (`useQuery`/`useInfiniteQuery`/`useMutation`), `QueryClientProvider` em `Providers.tsx`, keys + `invalidateMatchDerived` em `src/lib/query-keys.ts`. Fecha **B2** (otimista + rollback nas mutações de killer) e **B3** (loading/erro deixam de ser `useState` manual); **B4** já estava fechado (sinal derivado → invalidação). Gate: `lint` ✅ · `test` ✅ (313) · `tsc` ✅ · `build` ✅.
 > ⏭️ **M16** — CI workflow pronto e rodando; toggle de branch protection **adiado conscientemente** (projeto solo, ver M16). ✅ **M2/I4 (env vars de deploy)** — configuradas e conferidas pelo usuário (2026-07-14).
-> Próximo foco sugerido: **Fase 6** (dívida técnica restante: B11 nomes PT no seed; migração ESLint 8→9 em B6). B1, B7 e B12 concluídos.
+> **Fase 6 concluída (2026-07-14):** toda a dívida técnica restante fechada — B1, B7, B11, B12 e B6 (migração ESLint 8→9 + flat config nativo). Nenhuma pendência aberta; só M16 (branch protection) adiado conscientemente.
 
 ---
 
@@ -237,11 +237,12 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Feito (2026-07-12):** declarado `"@eslint/eslintrc": "^2.1.4"` em `devDependencies` (versão que já resolvia transitivamente); lockfile sincronizado; `npm run lint` segue verde (0 erros).
 - **Status:** ✅ Concluído.
 
-### 🟡 B6 — Drift de dependências + dep morta
-- **Arquivo:** `package.json`
+### ✅ B6 — Drift de dependências + dep morta
+- **Arquivo:** `package.json`, `eslint.config.mjs`
 - **Feito (2026-07-12):** `jsdom` removido das `devDependencies` (era dep morta declarada — ambiente é `happy-dom@20`). *Nota:* o pacote ainda é instalado fisicamente como **optional peer** do `vitest` (npm auto-instala optional peers); tirá-lo de vez exigiria política `omit=optional`, que afetaria outras deps — não vale.
-- **Adiado (com motivo):** `eslint-config-next@16` exige **`eslint >= 9`** → é uma **migração ESLint 8→9** (flat config, plugins) à parte. Não feito agora para **não desestabilizar o gate recém-verde**. Fazer como item próprio.
-- **Status:** 🟡 Parcial — dep morta resolvida; alinhamento eslint-config-next/eslint-9 pendente (deliberado).
+- **Feito (2026-07-14) — migração ESLint 8→9:** `eslint ^8 → ^9` (resolve 9.39.5, linha de manutenção — escolhida sobre eslint@10 por engines mais amplos: `^20.9.0` vs `^20.19.0`, e o local roda Node 20.12), `eslint-config-next 15.0.3 → ^16.2.10` (alinha com Next 16). `eslint.config.mjs` passou de `FlatCompat`/`compat.extends` (que quebrava com "circular structure" no ESLint 9) para **flat config nativo** — spread de `eslint-config-next/core-web-vitals` + `eslint-config-next/typescript`. `@eslint/eslintrc` **removido** (só existia para o FlatCompat) → outra dep morta a menos.
+- **Efeitos colaterais tratados:** o novo ruleset (`eslint-plugin-react-hooks@7`) apontou `react-hooks/set-state-in-effect` em `ProfileDialog.tsx` → refatorado (form extraído p/ `ProfileForm` interno com `useState` lazy; o `Dialog.Content` do Radix remonta ao abrir, eliminando o effect de reset). `@next/next/no-img-element` desligado em `**/*.test.{ts,tsx}` (mocks de `next/image` usam `<img>` de propósito).
+- **Status:** ✅ Resolvido. Gate: `lint` ✅ (0 erros, 0 warnings) · `tsc --noEmit` ✅ · `test` ✅ (385) · `next build` ✅.
 
 ### ✅ B1 — Duplicação de lógica de stats
 - **Arquivos:** `src/lib/utils.ts`, `src/components/organisms/StatisticsOverview.tsx`.
@@ -291,11 +292,12 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Feito (2026-07-13, junto de M13):** todos os hex saíram do componente para tokens em `globals.css @theme` — `BLOOD_PALETTE` → `--color-chart-1..8`/`--color-chart-other`; `#10B981` (win) → `--color-win`; `#9ca3af` (legenda) → classe `text-muted`. O `fill`/`backgroundColor` agora referenciam `var(--color-chart-*)`. Sobra apenas string de `var()`, não hex cru.
 - **Status:** ✅ Concluído.
 
-### 🟡 B11 — Texto de UI em português (viola English-only)
-- **Arquivos:** `prisma/seed.ts:7,49,77,126,147,154` (ainda "Trapper (Caçador)", "Huntress (Caçadora)", "Clown (Palhaço)", "Deathslinger (Mercenário)", "Twins (Gêmeos)", "Trickster (Trapaça)").
-- **Situação (verificada):** o `TeamTabTemplate` **não** tem mais nomes PT hardcoded ("Spectro"/"Drácula"/"Clima Esquisito" sumiram) — virou data-driven por usuário. **Falta só o seed.**
-- **Correção:** normalizar os nomes dos killers para inglês no `seed.ts`. (Locale `pt-BR` em datas continua permitido — ver `MatchItem.tsx:14`.)
-- **Status:** 🟡 Parcial — só o seed remanesce.
+### ✅ B11 — Texto de UI em português (viola English-only)
+- **Arquivos:** `prisma/seed.ts` — eram **16** nomes com parentético PT (a lista original citava só 6): Trapper/Caçador, Wraith/Espectro, Hag/Bruxa, Huntress/Caçadora, Clown/Palhaço, Plague/Praga, Deathslinger/Mercenário, Twins/Gêmeos, Trickster/Trapaça, Artist/Artista, Dredge/Draga, Knight/Cavaleiro, Singularity/Singularidade, Xenomorph/Xenomorfo, Unknown/Desconhecido, Houndmaster/Mestra Matilha.
+- **Situação (verificada):** o `TeamTabTemplate` **não** tem mais nomes PT hardcoded ("Spectro"/"Drácula"/"Clima Esquisito" sumiram) — virou data-driven por usuário. Só o seed remanescia.
+- **Feito (2026-07-14):** os 16 nomes normalizados para inglês. Parentéticos que já são **nomes de personagem em inglês** foram mantidos (satisfazem English-only e ajudam o reconhecimento): "Shape (Michael Myers)", "Nightmare (Freddy Krueger)", "Executioner (Pyramid Head)", "Cannibal (Bubba Sawyer)", "Mastermind (Wesker)", "Good Guy (Chucky)", "Dark Lord (Dracula)", "Onryō (Sadako)", "Ghoul (Kaneki)", "Lich (D&D)", "Vecna (Stranger Things)", "First (Adriana)", "Hillbilly (Billy)". Locale `pt-BR` em datas continua permitido (`MatchItem.tsx`).
+- **Migração segura de re-seed:** como o upsert é **por `name`**, renomear criaria linhas duplicadas e orfanaria os `Match`. Adicionado `migrateLegacyNames()` (mapa `legacyRenames`, idempotente): renomeia in-place a linha PT antiga → nome inglês antes do upsert, preservando `killerId` (e portanto `Match`/`Profile.mainKillerId`). No-op em DB novo; só renomeia se o nome novo ainda não existir.
+- **Status:** ✅ Resolvido. Gate: `tsc --noEmit` ✅ · `lint` ✅.
 
 ### ✅ B12 — `<Image src="">` (reaparece em novo componente)
 - **Arquivos (original resolvido):** `TeamTabTemplate`/`PlayerCard` — `PlayerCard` foi removido; roster usa avatar com iniciais → **sem `src=""`**.
@@ -365,4 +367,6 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 _Última atualização: 2026-07-13 — Fase 5 (a11y AA) + N1 (TanStack Query) concluídos._
 _Última atualização: 2026-07-14 — B1 e B7 concluídos._
 _Última atualização: 2026-07-14 — B12 concluído (`KillerDetailPanel` + átomo `KillerImage`)._
-_Progresso: 32/35 concluídos, 3/35 parciais, 0 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros) · `tsc --noEmit` ✅ (0 erros) · `test` ✅ · `build` ✅. Fases 0–5 + N1 concluídos. Nenhuma pendência 🔴/🟠 aberta. Parciais restantes (🟢 dívida técnica): B6 (migração ESLint 8→9), B11 (nomes PT no seed). Adiado conscientemente: M16 (branch protection — projeto solo). Ações de ops (M2/I4) fechadas._
+_Última atualização: 2026-07-14 — B11 concluído (16 nomes PT→EN no seed + migração idempotente de rename)._
+_Última atualização: 2026-07-14 — B6 concluído (ESLint 8→9, eslint-config-next 16, flat config nativo, @eslint/eslintrc removido)._
+_Progresso: 35/35 concluídos, 0 parcial, 0 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros, 0 warnings) · `tsc --noEmit` ✅ (0 erros) · `test` ✅ (385) · `next build` ✅. Todas as fases (0–6) + N1/N2 concluídas. Nenhuma pendência 🔴/🟠/🟢 aberta. Adiado conscientemente: M16 (branch protection — projeto solo). Ações de ops (M2/I4) fechadas._
