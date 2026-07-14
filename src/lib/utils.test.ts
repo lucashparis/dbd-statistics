@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeStats, computeStreaks, formatPercent } from "@/lib/utils";
+import { aggregateStats, computeStats, computeStreaks, computeWinRate, formatPercent } from "@/lib/utils";
 import type { Killer } from "@/types/killer";
 
 const base: Killer = {
@@ -29,6 +29,41 @@ describe("computeStats", () => {
     const stats = computeStats({ ...base, wins: 5, losses: 0 });
     expect(stats.total).toBe(5);
     expect(stats.winRate).toBe(100);
+  });
+});
+
+describe("computeWinRate", () => {
+  it("returns 0 when no games played", () => {
+    expect(computeWinRate(0, 0)).toBe(0);
+  });
+
+  it("rounds to the nearest whole percent", () => {
+    expect(computeWinRate(1, 2)).toBe(33);
+    expect(computeWinRate(2, 1)).toBe(67);
+  });
+
+  it("returns 100 when all games are wins", () => {
+    expect(computeWinRate(5, 0)).toBe(100);
+  });
+});
+
+describe("aggregateStats", () => {
+  it("returns zeroed totals for an empty list", () => {
+    expect(aggregateStats([])).toEqual({ wins: 0, losses: 0, total: 0, winRate: 0 });
+  });
+
+  it("sums wins and losses across killers and derives the win rate", () => {
+    const totals = aggregateStats([
+      { wins: 3, losses: 1 },
+      { wins: 1, losses: 3 },
+    ]);
+    expect(totals).toEqual({ wins: 4, losses: 4, total: 8, winRate: 50 });
+  });
+
+  it("matches computeWinRate's formula so the two never drift", () => {
+    const killers = [{ wins: 7, losses: 5 }, { wins: 2, losses: 4 }];
+    const totals = aggregateStats(killers);
+    expect(totals.winRate).toBe(computeWinRate(totals.wins, totals.losses));
   });
 });
 

@@ -6,10 +6,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function computeWinRate(wins: number, losses: number): number {
+  const total = wins + losses;
+  return total === 0 ? 0 : Math.round((wins / total) * 100);
+}
+
 export function computeStats(killer: Killer): KillerStats {
   const total = killer.wins + killer.losses;
-  const winRate = total === 0 ? 0 : Math.round((killer.wins / total) * 100);
-  return { ...killer, total, winRate };
+  return { ...killer, total, winRate: computeWinRate(killer.wins, killer.losses) };
+}
+
+export function aggregateStats(killers: Pick<Killer, "wins" | "losses">[]) {
+  const wins = killers.reduce((sum, k) => sum + k.wins, 0);
+  const losses = killers.reduce((sum, k) => sum + k.losses, 0);
+  return { wins, losses, total: wins + losses, winRate: computeWinRate(wins, losses) };
 }
 
 export function formatPercent(value: number): string {

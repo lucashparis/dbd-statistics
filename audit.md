@@ -41,14 +41,14 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 |-----------|-------|-------------|-----------|------------|
 | 🔴 ALTO   | 3     | 3           | 0         | 0          |
 | 🟠 MÉDIO  | 19    | 18          | 1         | 0          |
-| 🟢 BAIXO  | 13    | 8           | 4         | 1          |
-| **Total** | **35**| **29**      | **5**     | **1**      |
+| 🟢 BAIXO  | 13    | 9           | 4         | 0          |
+| **Total** | **35**| **30**      | **4**     | **0**      |
 
 > ✅ **Fases 0 (ALTO), 1 (gate), 2 (API & dados), 3 (segurança/hardening), 4 (Next.js & performance) e 5 (acessibilidade AA)** fechadas.
 > ✅ **M1/M17/M18 pelo refactor; M2 (rate limit, verificado ao vivo) + M3 (headers/CSP); M8 (boundaries) + M9 (skeleton) + M10 (imagens).**
 > ✅ **Fase 5 (2026-07-13):** M12 (combobox APG) + M13 (paleta categórica distinguível + `role="img"`) + M14 (`prefers-reduced-motion`) + M15 (contraste AA) + B8 (focus ring) + B9 (label da busca) + B10 (hex→tokens). Gate atual: `lint` ✅ (0 erros) · `test` ✅ (318) · `tsc --noEmit` ✅ (0 erros).
 > ✅ **N1 (React Query) — 2026-07-13:** os 6 hooks migrados para TanStack Query v5 (`useQuery`/`useInfiniteQuery`/`useMutation`), `QueryClientProvider` em `Providers.tsx`, keys + `invalidateMatchDerived` em `src/lib/query-keys.ts`. Fecha **B2** (otimista + rollback nas mutações de killer) e **B3** (loading/erro deixam de ser `useState` manual); **B4** já estava fechado (sinal derivado → invalidação). Gate: `lint` ✅ · `test` ✅ (313) · `tsc` ✅ · `build` ✅.
-> ⚠️ **Passos manuais (ops/GitHub) fora do alcance do código:** (1) branch protection em `master` + `verify` como *required check* (**M16**); (2) Upstash provisionado — env vars já no deploy (**M2** ✅ pelo usuário).
+> ⏭️ **M16** — CI workflow pronto e rodando; toggle de branch protection **adiado conscientemente** (projeto solo, ver M16). ✅ **M2/I4 (env vars de deploy)** — configuradas e conferidas pelo usuário (2026-07-14).
 > Próximo foco sugerido: **Fase 6** (dívida técnica restante: B1, B7, B11, B12; migração ESLint 8→9 em B6).
 
 ---
@@ -146,7 +146,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Feito:** `enforceRateLimit(identifier)` — sliding window **20 req / 10 s**, prefixo `dbd:rl`. Aplicado no `proxy.ts` a **requisições não-GET** em `/api/*` (o vetor de abuso = writes; reads não pagam a ida ao Redis), com chave `user:<id>` quando autenticado ou `ip:<x-forwarded-for>` senão (protege signup/login por IP). Resposta `429` com `Retry-After` + `X-RateLimit-*`. **Fail-open**: sem `UPSTASH_REDIS_REST_URL`/`_TOKEN` o limiter é `null` e tudo passa (dev/CI/local não quebram). Matcher do proxy expandido para `/api/:path*`.
 - **DoD:** ✅ teste co-locado (`rate-limit.test.ts`) — `429` com headers, `Retry-After` nunca negativo, e fail-open quando não configurado. `tsc`/`lint`/`test` (283)/`build` verdes; proxy empacota `@upstash` no bundle de middleware.
 - **Verificação ao vivo (2026-07-12):** Upstash provisionado + creds no `.env` local; `next start` + 25 POSTs rápidos em `/api/signup` → sequência **20×`400` (passam o limiter, barrados pelo zod) + 5×`429`**. Janela de 20/10s confirmada end-to-end contra o Redis real.
-- **Status:** ✅ Concluído e **verificado ao vivo**. ⚠️ **Resíduo humano (ops):** as mesmas 2 env vars (`UPSTASH_REDIS_REST_URL`/`_TOKEN`) precisam ser setadas **no ambiente de deploy** (Vercel) para o rate limit valer em produção — o `.env` local não vai pro deploy.
+- **Status:** ✅ Concluído e **verificado ao vivo**. ✅ **Resíduo de ops fechado (2026-07-14):** as 2 env vars (`UPSTASH_REDIS_REST_URL`/`_TOKEN`) já configuradas e conferidas no ambiente de deploy pelo usuário — rate limit ativo em produção.
 
 ### ✅ M3 — Sem headers de segurança / CSP
 - **Arquivos:** `src/lib/security-headers.ts` (novo, testável), `next.config.ts` (`async headers()`).
@@ -226,7 +226,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
       -F "restrictions=null"
     ```
 - **DoD:** workflow verde em um PR; merge bloqueado se falhar.
-- **Status:** 🟡 Parcial — workflow pronto e validado; toggle de branch protection **pendente (ação humana no GitHub)**.
+- **Status:** ✅ Workflow pronto e validado (roda em push/PR e reporta o check). ⏭️ **Toggle de branch protection adiado conscientemente (2026-07-14):** projeto solo — exigir status check + travar bypass adiciona fricção (todo merge passaria a depender do CI verde) sem ganho proporcional enquanto o usuário é o único committer. O CI segue avisando em cada push/PR; só não *bloqueia*. Localizado na UI (Settings → Branches → Branch protection rule); reativar quando entrar mais gente no repo.
 
 ---
 
@@ -243,11 +243,12 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Adiado (com motivo):** `eslint-config-next@16` exige **`eslint >= 9`** → é uma **migração ESLint 8→9** (flat config, plugins) à parte. Não feito agora para **não desestabilizar o gate recém-verde**. Fazer como item próprio.
 - **Status:** 🟡 Parcial — dep morta resolvida; alinhamento eslint-config-next/eslint-9 pendente (deliberado).
 
-### ⬜ B1 — Duplicação de lógica de stats
-- **Arquivo:** `src/components/organisms/StatisticsOverview.tsx:40-43` — reimplementa soma/win-rate em vez de reusar `@/lib/utils`.
-- **Nuance:** hoje agrega um array **filtrado** (`target`), enquanto `computeStats` é por-killer; ainda assim o cálculo de `winRate` duplica `formatPercent`/lógica de utils.
-- **Correção:** extrair um agregador em `lib/utils` e reusar (evita drift de fórmula).
-- **Status:** ⬜ Pendente.
+### ✅ B1 — Duplicação de lógica de stats
+- **Arquivos:** `src/lib/utils.ts`, `src/components/organisms/StatisticsOverview.tsx`.
+- **Nuance:** `StatisticsOverview` agrega um array **filtrado** (`target`), enquanto `computeStats` é por-killer; ainda assim o cálculo de `winRate` duplicava a fórmula de utils.
+- **Feito (2026-07-14):** extraído `computeWinRate(wins, losses)` como **fonte única** da fórmula; `computeStats` passou a chamá-lo e novo `aggregateStats(killers)` soma o array e reusa `computeWinRate`. `StatisticsOverview` trocou as 4 linhas inline (`reduce` + winRate) por `const totals = aggregateStats(target)`. Sem mais duplicação de fórmula → sem drift possível.
+- **DoD:** ✅ testes co-locados em `utils.test.ts` — `computeWinRate` (0/0, arredondamento, 100%), `aggregateStats` (lista vazia, soma multi-killer, e um teste que ancora `aggregateStats.winRate === computeWinRate(...)` pra travar o drift). Gate: `test` ✅ (utils 18 + StatisticsOverview 10) · `tsc --noEmit` ✅ (0) · `eslint` ✅ (0).
+- **Status:** ✅ Concluído.
 
 ### ✅ B2 — Doc/impl drift: "optimistic updates"
 - **Arquivo:** `src/hooks/useKillers.ts`
@@ -341,7 +342,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 | I1 | `reactCompiler: true` no top-level | ✅ **Correto no Next 16** (estável). Nenhuma ação. |
 | I2 | Injeção (SQL/NoSQL/cmd) | ✅ Sem achados — Prisma parametrizado em todas as rotas novas (players/teams/streaks); sem SQL cru. Manter. |
 | I3 | XSS | ✅ Sem achados — sem `dangerouslySetInnerHTML`. Manter. |
-| I4 | Secrets | ✅ **Resolvido (código/repo):** `.env` ignorado; `.env.example` já documenta `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_SECRET` (com hint `npx auth secret`) e `SEED_DEFAULT_PASSWORD`. Ambas as vars são **consumidas**: `DATABASE_URL_UNPOOLED` via `directUrl` no `schema.prisma`; `AUTH_SECRET` auto-lido pelo NextAuth v5. Documentado também no README/CLAUDE (B13). ⚠️ **Resíduo humano (ops):** garantir os valores reais no vault/deploy — fora do alcance do código. |
+| I4 | Secrets | ✅ **Resolvido (código/repo):** `.env` ignorado; `.env.example` já documenta `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_SECRET` (com hint `npx auth secret`) e `SEED_DEFAULT_PASSWORD`. Ambas as vars são **consumidas**: `DATABASE_URL_UNPOOLED` via `directUrl` no `schema.prisma`; `AUTH_SECRET` auto-lido pelo NextAuth v5. Documentado também no README/CLAUDE (B13). ✅ **Ops fechado (2026-07-14):** valores reais no vault/deploy configurados e conferidos pelo usuário. |
 | I5 | Arquitetura de monorepo | **N/A** — app única. |
 | I6 | PII: nomes/nicks reais no Team | ✅ **Resolvido pelo redesign** — nomes não são mais hardcoded no source; são dados por-usuário atrás de auth. *Nota LGPD:* como agora é dado de usuário em base real, tratar retenção/anonimização é decisão de produto (revisão humana se a base sair do ambiente). |
 | I7 | 3 famílias de fonte | ✅ **JetBrains Mono confirmada em uso** (`KillerRankingList` usa `font-mono`; carregada em `layout.tsx`). Manter as 3 fontes. |
@@ -360,4 +361,5 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 ---
 
 _Última atualização: 2026-07-13 — Fase 5 (a11y AA) + N1 (TanStack Query) concluídos._
-_Progresso: 29/35 concluídos, 5/35 parciais, 1/35 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros) · `test` ✅ (313) · `tsc --noEmit` ✅ (0 erros) · `build` ✅. Fases 0–5 + N1 concluídos; N1 fecha B2/B3 (B4 já estava). Pendente: B1 (BAIXO). Parciais: B6, B7, B11, B12, M16. Ação humana pendente: branch protection no GitHub (M16)._
+_Última atualização: 2026-07-14 — B1 concluído._
+_Progresso: 30/35 concluídos, 5/35 parciais, 0 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros) · `tsc --noEmit` ✅ (0 erros) · `test` ✅ · `build` ✅. Fases 0–5 + N1 concluídos. Nenhuma pendência 🔴/🟠 aberta. Parciais restantes (🟢 dívida técnica): B6 (migração ESLint 8→9), B7 (animation-delay), B11 (nomes PT no seed), B12 (`<Image src="">` no KillerDetailPanel). Adiado conscientemente: M16 (branch protection — projeto solo). Ações de ops (M2/I4) fechadas._
