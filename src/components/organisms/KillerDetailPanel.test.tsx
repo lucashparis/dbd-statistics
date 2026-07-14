@@ -38,4 +38,16 @@ describe("KillerDetailPanel", () => {
     render(<KillerDetailPanel killer={killer} />);
     expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(2);
   });
+
+  it("renders a labelled fallback instead of an empty src when the image is missing", () => {
+    const { container } = render(<KillerDetailPanel killer={killer} />);
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByRole("img", { name: "Trapper" })).toBeInTheDocument();
+  });
+
+  it("renders the killer image when an image url is present", () => {
+    render(<KillerDetailPanel killer={{ ...killer, imageUrl: "/trapper.png" }} />);
+    const img = screen.getByAltText("Trapper");
+    expect(img).toHaveAttribute("src", "/trapper.png");
+  });
 });

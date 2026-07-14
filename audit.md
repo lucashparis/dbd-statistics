@@ -49,7 +49,7 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 > ✅ **Fase 5 (2026-07-13):** M12 (combobox APG) + M13 (paleta categórica distinguível + `role="img"`) + M14 (`prefers-reduced-motion`) + M15 (contraste AA) + B8 (focus ring) + B9 (label da busca) + B10 (hex→tokens). Gate atual: `lint` ✅ (0 erros) · `test` ✅ (318) · `tsc --noEmit` ✅ (0 erros).
 > ✅ **N1 (React Query) — 2026-07-13:** os 6 hooks migrados para TanStack Query v5 (`useQuery`/`useInfiniteQuery`/`useMutation`), `QueryClientProvider` em `Providers.tsx`, keys + `invalidateMatchDerived` em `src/lib/query-keys.ts`. Fecha **B2** (otimista + rollback nas mutações de killer) e **B3** (loading/erro deixam de ser `useState` manual); **B4** já estava fechado (sinal derivado → invalidação). Gate: `lint` ✅ · `test` ✅ (313) · `tsc` ✅ · `build` ✅.
 > ⏭️ **M16** — CI workflow pronto e rodando; toggle de branch protection **adiado conscientemente** (projeto solo, ver M16). ✅ **M2/I4 (env vars de deploy)** — configuradas e conferidas pelo usuário (2026-07-14).
-> Próximo foco sugerido: **Fase 6** (dívida técnica restante: B1, B7, B11, B12; migração ESLint 8→9 em B6).
+> Próximo foco sugerido: **Fase 6** (dívida técnica restante: B11 nomes PT no seed; migração ESLint 8→9 em B6). B1, B7 e B12 concluídos.
 
 ---
 
@@ -297,11 +297,12 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 - **Correção:** normalizar os nomes dos killers para inglês no `seed.ts`. (Locale `pt-BR` em datas continua permitido — ver `MatchItem.tsx:14`.)
 - **Status:** 🟡 Parcial — só o seed remanesce.
 
-### ⬜ B12 — `<Image src="">` (reaparece em novo componente)
+### ✅ B12 — `<Image src="">` (reaparece em novo componente)
 - **Arquivos (original resolvido):** `TeamTabTemplate`/`PlayerCard` — `PlayerCard` foi removido; roster usa avatar com iniciais → **sem `src=""`**.
-- **Reaparecimento (verificado):** `src/components/organisms/KillerDetailPanel.tsx` passa `imageUrl` direto ao `<Image>`; com `imageUrl` vazio o teste emite *"An empty string was passed to the src attribute"*.
+- **Reaparecimento (verificado):** `src/components/organisms/KillerDetailPanel.tsx` passava `imageUrl` direto ao `<Image>`; com `imageUrl` vazio o teste emitia *"An empty string was passed to the src attribute"*.
 - **Correção:** render condicional do fallback quando `imageUrl` vazio, em vez de `src=""`.
-- **Status:** 🟡 Parcial — alvo original resolvido; **recorrência** no `KillerDetailPanel` a corrigir.
+- **Feito (2026-07-14):** guard clause em `KillerDetailPanel.tsx` e no átomo compartilhado `KillerImage.tsx` (usado pelo `KillerCard`) — quando `src`/`imageUrl` é vazio, renderiza um fallback com ícone `Skull` (`role="img"` + `aria-label={name}`, `bg-surface-2`/`text-muted`) em vez de `<Image src="">`. Testes cobrindo o fallback (sem `<img>`, `role="img"` nomeado) e o caminho com imagem em ambos os arquivos. Gate: `test` ✅ (8/8 nos 2 arquivos) · `tsc --noEmit` ✅ · `lint` ✅.
+- **Status:** ✅ Resolvido — alvo original + recorrência no `KillerDetailPanel` fechados; classe de bug também blindada no átomo `KillerImage`.
 
 ### ✅ B13 — README/CLAUDE.md desatualizados (pioraram com o refactor)
 - **Arquivos:** `README.md`, `CLAUDE.md`
@@ -363,4 +364,5 @@ A base sofreu um **refactor grande** entre 2026-07-08 e 2026-07-12. Isso resolve
 
 _Última atualização: 2026-07-13 — Fase 5 (a11y AA) + N1 (TanStack Query) concluídos._
 _Última atualização: 2026-07-14 — B1 e B7 concluídos._
-_Progresso: 31/35 concluídos, 4/35 parciais, 0 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros) · `tsc --noEmit` ✅ (0 erros) · `test` ✅ · `build` ✅. Fases 0–5 + N1 concluídos. Nenhuma pendência 🔴/🟠 aberta. Parciais restantes (🟢 dívida técnica): B6 (migração ESLint 8→9), B11 (nomes PT no seed), B12 (`<Image src="">` no KillerDetailPanel). Adiado conscientemente: M16 (branch protection — projeto solo). Ações de ops (M2/I4) fechadas._
+_Última atualização: 2026-07-14 — B12 concluído (`KillerDetailPanel` + átomo `KillerImage`)._
+_Progresso: 32/35 concluídos, 3/35 parciais, 0 pendente (+ N1 ✅ e N2 ✅). Gate: `lint` ✅ (0 erros) · `tsc --noEmit` ✅ (0 erros) · `test` ✅ · `build` ✅. Fases 0–5 + N1 concluídos. Nenhuma pendência 🔴/🟠 aberta. Parciais restantes (🟢 dívida técnica): B6 (migração ESLint 8→9), B11 (nomes PT no seed). Adiado conscientemente: M16 (branch protection — projeto solo). Ações de ops (M2/I4) fechadas._

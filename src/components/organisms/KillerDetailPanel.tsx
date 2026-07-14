@@ -50,14 +50,24 @@ export function KillerDetailPanel({ killer, longestWinStreak = 0, longestLossStr
       )}
     >
       <div className="relative h-64 sm:h-auto sm:w-48 shrink-0">
-        <Image
-          src={killer.imageUrl}
-          alt={killer.name}
-          fill
-          className="object-cover object-top"
-          sizes="(max-width: 640px) 100vw, 192px"
-          unoptimized
-        />
+        {killer.imageUrl ? (
+          <Image
+            src={killer.imageUrl}
+            alt={killer.name}
+            fill
+            className="object-cover object-top"
+            sizes="(max-width: 640px) 100vw, 192px"
+            unoptimized
+          />
+        ) : (
+          <div
+            role="img"
+            aria-label={killer.name}
+            className="absolute inset-0 flex items-center justify-center bg-surface-2"
+          >
+            <Skull className="h-16 w-16 text-muted" aria-hidden="true" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-surface sm:block hidden" />
         <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent sm:hidden" />
       </div>

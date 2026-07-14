@@ -24,4 +24,10 @@ describe("KillerImage", () => {
     rerender(<KillerImage src="/a.png" alt="A" overlay={false} />);
     expect(container.querySelector(".bg-gradient-to-t")).toBeNull();
   });
+
+  it("renders a labelled fallback instead of an empty src when the source is missing", () => {
+    const { container } = render(<KillerImage src="" alt="Trapper" />);
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByRole("img", { name: "Trapper" })).toBeInTheDocument();
+  });
 });
