@@ -17,6 +17,7 @@ const publicSelect = {
   updatedAt: true,
   user: { select: { name: true } },
   mainKiller: { select: { id: true, name: true, imageUrl: true } },
+  mainSurv: { select: { id: true, name: true, imageUrl: true } },
 } as const;
 
 type PublicRow = {
@@ -26,6 +27,7 @@ type PublicRow = {
   updatedAt: Date;
   user: { name: string | null };
   mainKiller: { id: number; name: string; imageUrl: string } | null;
+  mainSurv: { id: number; name: string; imageUrl: string } | null;
 };
 
 const ZERO_STATS: ProfileStats = { total: 0, wins: 0, losses: 0, winRate: 0 };
@@ -38,6 +40,7 @@ function toSummary(row: PublicRow, stats: ProfileStats): PublicProfileSummary {
     nick: row.nick,
     channelUrl: row.channelUrl,
     mainKiller: row.mainKiller,
+    mainSurv: row.mainSurv,
     stats,
   };
 }

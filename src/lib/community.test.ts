@@ -22,6 +22,7 @@ function row(userId: string, nick: string, overrides: Record<string, unknown> = 
     updatedAt: new Date("2024-01-01T00:00:00.000Z"),
     user: { name: `${nick} Name` },
     mainKiller: null,
+    mainSurv: null,
     ...overrides,
   };
 }
@@ -90,7 +91,10 @@ describe("getPublicProfile", () => {
 
   it("returns the detail with derived stats, killers and streaks", async () => {
     vi.mocked(prisma.profile.findUnique).mockResolvedValueOnce(
-      row("u1", "quiet", { mainKiller: { id: 3, name: "Nurse", imageUrl: "https://x/n.png" } }) as never
+      row("u1", "quiet", {
+        mainKiller: { id: 3, name: "Nurse", imageUrl: "https://x/n.png" },
+        mainSurv: { id: 7, name: "Nea Karlsson", imageUrl: "https://x/nea.png" },
+      }) as never
     );
     vi.mocked(getKillersForUser).mockResolvedValueOnce([
       { id: 1, name: "Trapper", imageUrl: "https://x/t.png", wins: 3, losses: 1, createdAt: "", updatedAt: "" },
@@ -106,6 +110,7 @@ describe("getPublicProfile", () => {
     expect(detail).not.toBeNull();
     expect(detail?.nick).toBe("quiet");
     expect(detail?.mainKiller?.name).toBe("Nurse");
+    expect(detail?.mainSurv?.name).toBe("Nea Karlsson");
     expect(detail?.stats).toEqual({ total: 5, wins: 4, losses: 1, winRate: 80 });
     expect(detail?.killers).toHaveLength(2);
     expect(detail?.streaks.global.longestWin).toBe(4);

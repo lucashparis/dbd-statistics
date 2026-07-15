@@ -20,6 +20,7 @@ const base: PublicProfileSummary = {
   nick: "dead",
   channelUrl: "https://twitch.tv/x",
   mainKiller: { id: 1, name: "Trapper", imageUrl: "https://x/t.png" },
+  mainSurv: { id: 2, name: "Nea Karlsson", imageUrl: "https://x/nea.png" },
   stats: { total: 10, wins: 6, losses: 4, winRate: 60 },
 };
 
@@ -49,5 +50,13 @@ describe("ProfileCard", () => {
     expect(screen.getByText("60%")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /view dead's statistics/i });
     expect(link).toBeInTheDocument();
+  });
+
+  it("shows the main survivor name when present and omits it otherwise", () => {
+    const { rerender } = render(<ProfileCard profile={base} variant="internal" />);
+    expect(screen.getByText(/surv · nea karlsson/i)).toBeInTheDocument();
+
+    rerender(<ProfileCard profile={{ ...base, mainSurv: null }} variant="internal" />);
+    expect(screen.queryByText(/surv ·/i)).not.toBeInTheDocument();
   });
 });

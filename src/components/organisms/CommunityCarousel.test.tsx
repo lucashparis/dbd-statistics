@@ -21,6 +21,7 @@ function summary(userId: string): PublicProfileSummary {
     nick: userId,
     channelUrl: "https://twitch.tv/" + userId,
     mainKiller: null,
+    mainSurv: null,
     stats: { total: 1, wins: 1, losses: 0, winRate: 100 },
   };
 }

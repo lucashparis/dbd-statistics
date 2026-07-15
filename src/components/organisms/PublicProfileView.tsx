@@ -23,6 +23,11 @@ export function PublicProfileView({ profile }: PublicProfileViewProps) {
               Main · {profile.mainKiller.name}
             </p>
           )}
+          {profile.mainSurv && (
+            <p className="mt-1 text-xs uppercase tracking-widest text-muted">
+              Surv · {profile.mainSurv.name}
+            </p>
+          )}
         </div>
         <ChannelLinkButton channelUrl={profile.channelUrl} />
       </header>

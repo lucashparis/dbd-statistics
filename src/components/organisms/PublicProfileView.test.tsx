@@ -16,6 +16,7 @@ const detail: PublicProfileDetail = {
   nick: "dead",
   channelUrl: "https://twitch.tv/x",
   mainKiller: { id: 1, name: "Trapper", imageUrl: "https://x/t.png" },
+  mainSurv: { id: 2, name: "Nea Karlsson", imageUrl: "https://x/nea.png" },
   stats: { total: 10, wins: 6, losses: 4, winRate: 60 },
   killers: [],
   streaks: { global: { longestWin: 0, longestLoss: 0 }, perKiller: {} },
@@ -37,5 +38,15 @@ describe("PublicProfileView", () => {
   it("falls back to the nick as the heading when there is no name", () => {
     render(<PublicProfileView profile={{ ...detail, name: null }} />);
     expect(screen.getByRole("heading", { name: "dead" })).toBeInTheDocument();
+  });
+
+  it("shows the main survivor name when present", () => {
+    render(<PublicProfileView profile={detail} />);
+    expect(screen.getByText(/surv · nea karlsson/i)).toBeInTheDocument();
+  });
+
+  it("omits the main survivor line when there is none", () => {
+    render(<PublicProfileView profile={{ ...detail, mainSurv: null }} />);
+    expect(screen.queryByText(/surv ·/i)).not.toBeInTheDocument();
   });
 });

@@ -31,6 +31,7 @@ const detail: PublicProfileDetail = {
   nick: "dead",
   channelUrl: null,
   mainKiller: null,
+  mainSurv: null,
   stats: { total: 0, wins: 0, losses: 0, winRate: 0 },
   killers: [],
   streaks: { global: { longestWin: 0, longestLoss: 0 }, perKiller: {} },

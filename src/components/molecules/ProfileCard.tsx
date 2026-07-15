@@ -33,6 +33,11 @@ function CardBody({ profile }: { profile: PublicProfileSummary }) {
               {profile.mainKiller.name}
             </p>
           )}
+          {profile.mainSurv && (
+            <p className="truncate text-[11px] uppercase tracking-wide text-muted">
+              Surv · {profile.mainSurv.name}
+            </p>
+          )}
         </div>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-center">

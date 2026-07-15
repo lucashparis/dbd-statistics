@@ -23,6 +23,7 @@ function summary(userId: string): PublicProfileSummary {
     nick: userId,
     channelUrl: null,
     mainKiller: null,
+    mainSurv: null,
     stats: { total: 0, wins: 0, losses: 0, winRate: 0 },
   };
 }

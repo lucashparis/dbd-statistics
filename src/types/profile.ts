@@ -41,6 +41,7 @@ export interface PublicProfileSummary {
   nick: string;
   channelUrl: string | null;
   mainKiller: KillerRef | null;
+  mainSurv: Survivor | null;
   stats: ProfileStats;
 }
 
