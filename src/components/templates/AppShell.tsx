@@ -7,10 +7,10 @@ import { TabNav, type TabId } from "@/components/molecules/TabNav";
 const TABS = [
   { id: "killers" as TabId, label: "Killers" },
   { id: "streak" as TabId, label: "Streak" },
-  { id: "statistics" as TabId, label: "Statistics" },
   { id: "team" as TabId, label: "Team" },
-  { id: "history" as TabId, label: "History" },
   { id: "community" as TabId, label: "Community" },
+  { id: "statistics" as TabId, label: "Statistics" },
+  { id: "history" as TabId, label: "History" },
 ];
 
 interface AppShellProps {
