@@ -7,6 +7,10 @@ import type {
   ProfileStats,
   PublicProfileSummary,
   PublicProfileDetail,
+  RankMetric,
+  RankEntry,
+  RankViewer,
+  RankPage,
 } from "@/types/profile";
 
 // Whitelisted public projection — email/password are never selected.
@@ -143,5 +147,95 @@ export async function getPublicProfile(userId: string): Promise<PublicProfileDet
   } catch (e) {
     console.error("getPublicProfile failed", e);
     return null;
+  }
+}
+
+const RANK_MIN_MATCHES = 30;
+
+function rankComparator(metric: RankMetric) {
+  return (a: PublicProfileSummary, b: PublicProfileSummary) => {
+    if (metric === "wins") {
+      return (
+        b.stats.wins - a.stats.wins ||
+        b.stats.total - a.stats.total ||
+        a.userId.localeCompare(b.userId)
+      );
+    }
+    if (metric === "winRate") {
+      return (
+        b.stats.winRate - a.stats.winRate ||
+        b.stats.total - a.stats.total ||
+        a.userId.localeCompare(b.userId)
+      );
+    }
+    return (
+      b.stats.total - a.stats.total ||
+      b.stats.wins - a.stats.wins ||
+      a.userId.localeCompare(b.userId)
+    );
+  };
+}
+
+async function computeRankBase(metric: RankMetric): Promise<RankEntry[]> {
+  const profiles = (await prisma.profile.findMany({ select: publicSelect })) as PublicRow[];
+  if (profiles.length === 0) return [];
+
+  const stats = await statsByUser(profiles.map((p) => p.userId));
+
+  return profiles
+    .map((p) => toSummary(p, stats.get(p.userId) ?? ZERO_STATS))
+    .filter((s) => s.stats.total >= RANK_MIN_MATCHES)
+    .sort(rankComparator(metric))
+    .map((s, i) => ({ ...s, rank: i + 1 }));
+}
+
+// Resolves the viewer's own standing. If they're in the eligible base (found by
+// id), no extra query runs. Otherwise two cheap indexed lookups tell apart "has
+// a profile but < 30 matches" from "no public profile yet".
+async function resolveRankViewer(base: RankEntry[], viewerId: string): Promise<RankViewer> {
+  const entry = base.find((e) => e.userId === viewerId);
+  if (entry) return { status: "ranked", entry };
+
+  const [profile, total] = await Promise.all([
+    prisma.profile.findUnique({ where: { userId: viewerId }, select: { userId: true } }),
+    prisma.match.count({ where: { userId: viewerId } }),
+  ]);
+  if (!profile) return { status: "noProfile" };
+  return { status: "belowThreshold", total, remaining: Math.max(0, RANK_MIN_MATCHES - total) };
+}
+
+// The rank is 1-indexed over the full eligible list ordered by the active
+// metric, assigned *before* the search filter — so a viewer searching their own
+// nick sees their true position, and `me` is always the global position.
+export async function getRankedProfiles(opts: {
+  metric: RankMetric;
+  search: string;
+  page: number;
+  pageSize: number;
+  viewerId: string;
+}): Promise<RankPage> {
+  const { metric, search, page, pageSize, viewerId } = opts;
+  try {
+    const base = await unstable_cache(
+      () => computeRankBase(metric),
+      ["rank-base", metric],
+      { tags: ["community"], revalidate: COMMUNITY_TTL_SECONDS }
+    )();
+
+    const me = await resolveRankViewer(base, viewerId);
+
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? base.filter(
+          (e) => (e.name ?? "").toLowerCase().includes(q) || e.nick.toLowerCase().includes(q)
+        )
+      : base;
+
+    const start = (page - 1) * pageSize;
+    const upTo = start + pageSize;
+    return { entries: filtered.slice(start, upTo), hasMore: filtered.length > upTo, me };
+  } catch (e) {
+    console.error("getRankedProfiles failed", e);
+    return { entries: [], hasMore: false, me: null };
   }
 }

@@ -8,6 +8,7 @@ import { StreakTabTemplate } from "@/components/templates/StreakTabTemplate";
 import { TeamTabTemplate } from "@/components/templates/TeamTabTemplate";
 import { HistoryTabTemplate } from "@/components/templates/HistoryTabTemplate";
 import { CommunityTabTemplate } from "@/components/templates/CommunityTabTemplate";
+import { RankTabTemplate } from "@/components/templates/RankTabTemplate";
 import { useKillers } from "@/hooks/useKillers";
 import type { TabId } from "@/components/molecules/TabNav";
 import type { KillerStats } from "@/types/killer";
@@ -62,6 +63,7 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
       teamContent={<TeamTabTemplate isActive={activeTab === "team"} />}
       historyContent={<HistoryTabTemplate isActive={activeTab === "history"} />}
       communityContent={<CommunityTabTemplate isActive={activeTab === "community"} />}
+      rankContent={<RankTabTemplate isActive={activeTab === "rank"} />}
     />
   );
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getPublicProfiles, getPublicProfile } from "@/lib/community";
+import { getPublicProfiles, getPublicProfile, getRankedProfiles } from "@/lib/community";
 import { prisma } from "@/lib/prisma";
 import { getKillersForUser } from "@/lib/killers";
 import { getStreaksForUser } from "@/lib/streak";
@@ -10,7 +10,7 @@ vi.mock("@/lib/streak", () => ({ getStreaksForUser: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     profile: { findMany: vi.fn(), findUnique: vi.fn() },
-    match: { groupBy: vi.fn() },
+    match: { groupBy: vi.fn(), count: vi.fn() },
   },
 }));
 
@@ -120,5 +120,128 @@ describe("getPublicProfile", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(prisma.profile.findUnique).mockRejectedValueOnce(new Error("db down"));
     expect(await getPublicProfile("u1")).toBeNull();
+  });
+});
+
+describe("getRankedProfiles", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  // u1..u5 with distinct win/loss so each metric produces a different order.
+  // u3 has <30 matches and must never appear. winRate(u1)=round(20/30*100)=67.
+  const rows5 = [
+    row("u1", "alpha"),
+    row("u2", "bravo"),
+    row("u3", "charlie"),
+    row("u4", "delta"),
+    row("u5", "echo"),
+  ];
+  const groups5 = [
+    grp("u1", "win", 20),
+    grp("u1", "loss", 10),
+    grp("u2", "win", 40),
+    grp("u2", "loss", 10),
+    grp("u3", "win", 5),
+    grp("u3", "loss", 5),
+    grp("u4", "win", 25),
+    grp("u4", "loss", 25),
+    grp("u5", "win", 30),
+  ];
+
+  function seed(profiles: unknown[], groups: unknown[]) {
+    vi.mocked(prisma.profile.findMany).mockResolvedValue(profiles as never);
+    vi.mocked(prisma.match.groupBy).mockResolvedValue(groups as never);
+  }
+
+  function rank(overrides: Partial<Parameters<typeof getRankedProfiles>[0]> = {}) {
+    return getRankedProfiles({
+      metric: "matches",
+      search: "",
+      page: 1,
+      pageSize: 10,
+      viewerId: "nobody",
+      ...overrides,
+    });
+  }
+
+  it("excludes profiles with fewer than 30 matches and reports the viewer as belowThreshold", async () => {
+    seed(rows5, groups5);
+    vi.mocked(prisma.profile.findUnique).mockResolvedValue({ userId: "u3" } as never);
+    vi.mocked(prisma.match.count).mockResolvedValue(10);
+    const { entries, me } = await rank({ viewerId: "u3" });
+    expect(entries.find((e) => e.userId === "u3")).toBeUndefined();
+    expect(me).toEqual({ status: "belowThreshold", total: 10, remaining: 20 });
+  });
+
+  it("orders by matches (total desc, wins desc, userId asc) and numbers the rank", async () => {
+    seed(rows5, groups5);
+    const { entries } = await rank({ metric: "matches" });
+    expect(entries.map((e) => e.userId)).toEqual(["u2", "u4", "u5", "u1"]);
+    expect(entries.map((e) => e.rank)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("orders by wins (wins desc, total desc, userId asc)", async () => {
+    seed(rows5, groups5);
+    const { entries } = await rank({ metric: "wins" });
+    expect(entries.map((e) => e.userId)).toEqual(["u2", "u5", "u4", "u1"]);
+  });
+
+  it("orders by win rate (winRate desc, total desc, userId asc)", async () => {
+    seed(rows5, groups5);
+    const { entries } = await rank({ metric: "winRate" });
+    expect(entries.map((e) => e.userId)).toEqual(["u5", "u2", "u1", "u4"]);
+  });
+
+  it("breaks metric ties deterministically by userId ascending", async () => {
+    const rowsTie = [row("ub", "bee"), row("ua", "ay")];
+    const groupsTie = [
+      grp("ua", "win", 20),
+      grp("ua", "loss", 10),
+      grp("ub", "win", 20),
+      grp("ub", "loss", 10),
+    ];
+    seed(rowsTie, groupsTie);
+    const { entries } = await rank({ metric: "matches" });
+    expect(entries.map((e) => e.userId)).toEqual(["ua", "ub"]);
+  });
+
+  it("searches by nick and by name, case-insensitive", async () => {
+    seed(rows5, groups5);
+    const byNick = await rank({ search: "BRAV" });
+    expect(byNick.entries.map((e) => e.userId)).toEqual(["u2"]);
+    // "vo nam" only occurs in the name ("bravo Name"), never in a nick.
+    const byName = await rank({ search: "vo nam" });
+    expect(byName.entries.map((e) => e.userId)).toEqual(["u2"]);
+  });
+
+  it("keeps the viewer's global rank even when the search filters them out", async () => {
+    seed(rows5, groups5);
+    const { entries, me } = await rank({ metric: "matches", search: "bravo", viewerId: "u1" });
+    expect(entries.map((e) => e.userId)).toEqual(["u2"]);
+    expect(me?.status).toBe("ranked");
+    expect(me?.status === "ranked" && me.entry.userId).toBe("u1");
+    expect(me?.status === "ranked" && me.entry.rank).toBe(4);
+  });
+
+  it("reports the viewer as noProfile when they have no public profile", async () => {
+    seed(rows5, groups5);
+    vi.mocked(prisma.profile.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.match.count).mockResolvedValue(0);
+    expect((await rank({ viewerId: "ghost" })).me).toEqual({ status: "noProfile" });
+  });
+
+  it("paginates the eligible list by page and reports hasMore", async () => {
+    seed(rows5, groups5);
+    const p1 = await rank({ metric: "matches", page: 1, pageSize: 2 });
+    expect(p1.entries.map((e) => e.userId)).toEqual(["u2", "u4"]);
+    expect(p1.hasMore).toBe(true);
+    const p2 = await rank({ metric: "matches", page: 2, pageSize: 2 });
+    expect(p2.entries.map((e) => e.userId)).toEqual(["u5", "u1"]);
+    expect(p2.hasMore).toBe(false);
+  });
+
+  it("degrades to an empty payload when the database fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(prisma.profile.findMany).mockRejectedValueOnce(new Error("db down"));
+    expect(await rank()).toEqual({ entries: [], hasMore: false, me: null });
   });
 });
