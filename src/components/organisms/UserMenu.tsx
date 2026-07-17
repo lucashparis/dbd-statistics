@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Pencil, User, LogOut } from "lucide-react";
+import { Pencil, User, LogOut, Sparkles } from "lucide-react";
 import { Avatar } from "@/components/atoms/Avatar";
 import { ProfileDialog } from "@/components/organisms/ProfileDialog";
 import { useProfile } from "@/hooks/useProfile";
@@ -61,6 +61,15 @@ export function UserMenu() {
                 </Link>
               </DropdownMenu.Item>
             )}
+
+            <DropdownMenu.Separator className="my-1 h-px bg-subtle" />
+
+            <DropdownMenu.Item asChild className={itemClass}>
+              <Link href="/changelog">
+                <Sparkles size={14} aria-hidden />
+                What&apos;s new
+              </Link>
+            </DropdownMenu.Item>
 
             <DropdownMenu.Separator className="my-1 h-px bg-subtle" />
 

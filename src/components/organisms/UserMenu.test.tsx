@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { UserMenu } from "@/components/organisms/UserMenu";
 import { useSession } from "next-auth/react";
 import { useProfile } from "@/hooks/useProfile";
@@ -57,5 +58,19 @@ describe("UserMenu", () => {
   it("keeps the profile dialog closed until opened", () => {
     renderMenu();
     expect(screen.queryByText("Your profile")).not.toBeInTheDocument();
+  });
+
+  it("shows a What's new link that points to /changelog, above Sign out", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(screen.getByRole("button", { name: /open user menu/i }));
+
+    const whatsNew = await screen.findByRole("menuitem", { name: /what's new/i });
+    expect(whatsNew).toHaveAttribute("href", "/changelog");
+
+    const signOut = screen.getByRole("menuitem", { name: /sign out/i });
+    expect(
+      whatsNew.compareDocumentPosition(signOut) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 });
