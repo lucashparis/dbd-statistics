@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { PATCH } from "@/app/api/killers/[id]/win/route";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { revalidateTag } from "next/cache";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
@@ -57,6 +58,7 @@ describe("PATCH /api/killers/[id]/win", () => {
         data: expect.objectContaining({ userId: "u1", killerId: 1, result: "win", teamId: null }),
       })
     );
+    expect(vi.mocked(revalidateTag)).toHaveBeenCalledWith("community", "max");
   });
 
   it("returns 404 when the killer does not exist (foreign-key violation)", async () => {

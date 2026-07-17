@@ -32,6 +32,7 @@ export async function PATCH(
     if (lastLoss) {
       await prisma.match.delete({ where: { id: lastLoss.id } });
       revalidateTag(`streaks:${userId}`, "max");
+      revalidateTag("community", "max");
     }
 
     const killer = await getKillerForUser(userId, killerId);

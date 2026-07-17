@@ -3,6 +3,7 @@ import { POST } from "@/app/api/streaks/matches/route";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getTeamStreak } from "@/lib/streak";
+import { revalidateTag } from "next/cache";
 
 vi.mock("@/lib/auth-helpers", () => ({ getSessionUserId: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
@@ -87,6 +88,7 @@ describe("POST /api/streaks/matches", () => {
     expect(vi.mocked(prisma.streakRun.update)).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 99 }, data: { winCount: { increment: 1 } } })
     );
+    expect(vi.mocked(revalidateTag)).toHaveBeenCalledWith("community", "max");
   });
 
   it("closes the active run on a loss without incrementing", async () => {

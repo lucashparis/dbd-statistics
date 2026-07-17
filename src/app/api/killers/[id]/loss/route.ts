@@ -26,6 +26,7 @@ export async function PATCH(
       data: { userId, killerId, result: "loss", teamId: null },
     });
     revalidateTag(`streaks:${userId}`, "max");
+    revalidateTag("community", "max");
     const killer = await getKillerForUser(userId, killerId);
     return NextResponse.json(killer);
   } catch (e) {

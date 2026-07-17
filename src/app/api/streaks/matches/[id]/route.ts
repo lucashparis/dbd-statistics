@@ -53,6 +53,7 @@ export async function DELETE(
   });
 
   revalidateTag(`streaks:${userId}`, "max");
+  revalidateTag("community", "max");
 
   const summary = await getTeamStreak(userId, teamId);
   return NextResponse.json(summary);

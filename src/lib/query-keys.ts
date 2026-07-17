@@ -13,10 +13,12 @@ export const queryKeys = {
 };
 
 // A `Match` write feeds every match-derived read: the killer grid/pie,
-// the paginated history, and the streak aggregates (getKillersForUser and the
-// history route filter only by userId, so team-streak matches count too).
+// the paginated history, the streak aggregates, and the community/rank
+// projections (all filter only by userId, so team-streak matches count too).
 export function invalidateMatchDerived(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.killers });
   queryClient.invalidateQueries({ queryKey: queryKeys.history });
   queryClient.invalidateQueries({ queryKey: queryKeys.streaks });
+  queryClient.invalidateQueries({ queryKey: queryKeys.community });
+  queryClient.invalidateQueries({ queryKey: queryKeys.rank });
 }

@@ -66,6 +66,7 @@ export async function POST(req: Request) {
   });
 
   revalidateTag(`streaks:${userId}`, "max");
+  revalidateTag("community", "max");
 
   const summary = await getTeamStreak(userId, teamId);
   return NextResponse.json(summary, { status: 201 });

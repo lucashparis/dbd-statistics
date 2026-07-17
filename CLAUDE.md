@@ -50,7 +50,7 @@ All server-state hooks are built on **TanStack Query v5** (`@tanstack/react-quer
 - `useCommunity` — paginated public profile list via `useInfiniteQuery` (`enabled: isActive`), same shape as `useHistory` (`profiles`, `hasMore`, `loadMore`, `retry`).
 - `useAutocomplete<T extends AutocompleteItem>` — generic search autocomplete with keyboard nav (↑↓ Enter Escape) and click-outside dismissal. Pure client state — not a server-state hook. Works with any `{ id, name, imageUrl }` item; rendered by the generic `EntityAutocomplete` organism (used for both killers and survivors).
 
-**Cache invalidation:** any `Match`-writing mutation (killer win/loss/undo, team-streak launch/delete) calls `invalidateMatchDerived(queryClient)` → invalidates `killers` + `history` + `streaks` (all derive from `Match`, filtered only by `userId`). Roster mutations update their own list cache via `setQueryData`.
+**Cache invalidation:** any `Match`-writing mutation (killer win/loss/undo, team-streak launch/delete) calls `invalidateMatchDerived(queryClient)` → invalidates `killers` + `history` + `streaks` + `community` + `rank` (all derive from `Match`, filtered only by `userId` — the community/rank aggregate stats included). Roster mutations update their own list cache via `setQueryData`.
 
 **Testing hooks:** wrap `renderHook` with `createQueryWrapper()` from `src/test/queryWrapper.tsx` (fresh client per test, retries off, `staleTime: Infinity` so `initialData` queries don't auto-refetch).
 
@@ -128,7 +128,7 @@ Every route below (except NextAuth's own handler and `signup`) requires a sessio
 
 Keep API handlers thin — auth check → validate input (Zod via `parseId`/`parsePage`) → DB call (Prisma singleton) → `mutationError` in the catch. Business/derivation logic belongs in `src/lib/`.
 
-**Caching:** `/api/stats/streaks` computes via `computeStreaksForUser` wrapped in `unstable_cache(fn, ["streaks", userId], { tags: ["streaks:" + userId], revalidate: 60 })`. Every route that mutates `Match` (win/loss + undos, streak match POST, streak match DELETE) must call `revalidateTag("streaks:" + userId, "max")`. **Next 16 requires the 2nd arg** to `revalidateTag` — the 1-arg form breaks the build.
+**Caching:** `/api/stats/streaks` computes via `computeStreaksForUser` wrapped in `unstable_cache(fn, ["streaks", userId], { tags: ["streaks:" + userId], revalidate: 60 })`. Every route that mutates `Match` (win/loss + undos, streak match POST, streak match DELETE) must call `revalidateTag("streaks:" + userId, "max")` **and** `revalidateTag("community", "max")` (the public community/rank projections in `src/lib/community.ts` are `unstable_cache`d under the `community` tag and derive aggregate stats from `Match`). **Next 16 requires the 2nd arg** to `revalidateTag` — the 1-arg form breaks the build.
 
 ---
 
