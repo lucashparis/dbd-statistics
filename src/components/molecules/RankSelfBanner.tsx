@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import type { RankEntry, RankMetric, RankViewer } from "@/types/profile";
+import { RANK_MIN_MATCHES, type RankEntry, type RankMetric, type RankViewer } from "@/types/profile";
 
 interface RankSelfBannerProps {
   me: RankViewer | null;
@@ -39,7 +39,7 @@ export function RankSelfBanner({ me, metric, className }: RankSelfBannerProps) {
     return (
       <Hint className={className}>
         You&apos;re not on the rank yet — {me.remaining} more{" "}
-        {me.remaining === 1 ? "match" : "matches"} to qualify ({me.total}/30 played).
+        {me.remaining === 1 ? "match" : "matches"} to qualify ({me.total}/{RANK_MIN_MATCHES} played).
       </Hint>
     );
   }

@@ -127,7 +127,7 @@ describe("getRankedProfiles", () => {
   beforeEach(() => vi.clearAllMocks());
 
   // u1..u5 with distinct win/loss so each metric produces a different order.
-  // u3 has <30 matches and must never appear. winRate(u1)=round(20/30*100)=67.
+  // u3 has <20 matches and must never appear. winRate(u1)=round(20/30*100)=67.
   const rows5 = [
     row("u1", "alpha"),
     row("u2", "bravo"),
@@ -163,13 +163,13 @@ describe("getRankedProfiles", () => {
     });
   }
 
-  it("excludes profiles with fewer than 30 matches and reports the viewer as belowThreshold", async () => {
+  it("excludes profiles with fewer than 20 matches and reports the viewer as belowThreshold", async () => {
     seed(rows5, groups5);
     vi.mocked(prisma.profile.findUnique).mockResolvedValue({ userId: "u3" } as never);
     vi.mocked(prisma.match.count).mockResolvedValue(10);
     const { entries, me } = await rank({ viewerId: "u3" });
     expect(entries.find((e) => e.userId === "u3")).toBeUndefined();
-    expect(me).toEqual({ status: "belowThreshold", total: 10, remaining: 20 });
+    expect(me).toEqual({ status: "belowThreshold", total: 10, remaining: 10 });
   });
 
   it("orders by matches (total desc, wins desc, userId asc) and numbers the rank", async () => {

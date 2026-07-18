@@ -34,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" translate="no" className="dark">
       <body
         className={`${cinzel.variable} ${geist.variable} ${jetbrainsMono.variable} antialiased scrollbar-dark`}
         style={{ fontFamily: "var(--font-geist), sans-serif" }}

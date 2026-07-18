@@ -3,14 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { getKillersForUser } from "@/lib/killers";
 import { getStreaksForUser } from "@/lib/streak";
 import { computeStats } from "@/lib/utils";
-import type {
-  ProfileStats,
-  PublicProfileSummary,
-  PublicProfileDetail,
-  RankMetric,
-  RankEntry,
-  RankViewer,
-  RankPage,
+import {
+  RANK_MIN_MATCHES,
+  type ProfileStats,
+  type PublicProfileSummary,
+  type PublicProfileDetail,
+  type RankMetric,
+  type RankEntry,
+  type RankViewer,
+  type RankPage,
 } from "@/types/profile";
 
 // Whitelisted public projection — email/password are never selected.
@@ -150,8 +151,6 @@ export async function getPublicProfile(userId: string): Promise<PublicProfileDet
   }
 }
 
-const RANK_MIN_MATCHES = 30;
-
 function rankComparator(metric: RankMetric) {
   return (a: PublicProfileSummary, b: PublicProfileSummary) => {
     if (metric === "wins") {
@@ -191,7 +190,7 @@ async function computeRankBase(metric: RankMetric): Promise<RankEntry[]> {
 
 // Resolves the viewer's own standing. If they're in the eligible base (found by
 // id), no extra query runs. Otherwise two cheap indexed lookups tell apart "has
-// a profile but < 30 matches" from "no public profile yet".
+// a profile but < RANK_MIN_MATCHES" from "no public profile yet".
 async function resolveRankViewer(base: RankEntry[], viewerId: string): Promise<RankViewer> {
   const entry = base.find((e) => e.userId === viewerId);
   if (entry) return { status: "ranked", entry };

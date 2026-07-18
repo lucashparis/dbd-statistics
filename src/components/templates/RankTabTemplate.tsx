@@ -10,7 +10,7 @@ import { RankSelfBanner } from "@/components/molecules/RankSelfBanner";
 import { KillerSearchInput } from "@/components/molecules/KillerSearchInput";
 import { EmptyState } from "@/components/molecules/EmptyState";
 import { Button } from "@/components/atoms/Button";
-import type { RankMetric } from "@/types/profile";
+import { RANK_MIN_MATCHES, type RankMetric } from "@/types/profile";
 
 interface RankTabTemplateProps {
   isActive: boolean;
@@ -58,8 +58,8 @@ export function RankTabTemplate({ isActive }: RankTabTemplateProps) {
     ) : (
       <EmptyState
         icon={Trophy}
-        title="No players have 30+ matches yet"
-        description="Once players reach 30 matches, they'll show up here."
+        title={`No players have ${RANK_MIN_MATCHES}+ matches yet`}
+        description={`Once players reach ${RANK_MIN_MATCHES} matches, they'll show up here.`}
       />
     );
   } else {
@@ -94,7 +94,7 @@ export function RankTabTemplate({ isActive }: RankTabTemplateProps) {
       </div>
 
       <p className="text-xs text-muted">
-        Only players with at least 30 matches appear in the rank.
+        Only players with at least {RANK_MIN_MATCHES} matches appear in the rank.
       </p>
 
       {!loading && !error && <RankSelfBanner me={me} metric={metric} />}

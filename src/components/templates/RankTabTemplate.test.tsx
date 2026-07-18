@@ -52,9 +52,9 @@ describe("RankTabTemplate", () => {
     mockHook({});
   });
 
-  it("always shows the 30-matches eligibility rule", () => {
+  it("always shows the 20-matches eligibility rule", () => {
     render(<RankTabTemplate isActive />);
-    expect(screen.getByText(/at least 30 matches/i)).toBeInTheDocument();
+    expect(screen.getByText(/at least 20 matches/i)).toBeInTheDocument();
   });
 
   it("shows the position banner and marks the viewer's own row when ranked", () => {
@@ -72,7 +72,7 @@ describe("RankTabTemplate", () => {
   });
 
   it("shows the remaining-matches hint when the viewer is below the threshold", () => {
-    mockHook({ entries: [entry("u9", 1)], me: { status: "belowThreshold", total: 28, remaining: 2 } });
+    mockHook({ entries: [entry("u9", 1)], me: { status: "belowThreshold", total: 18, remaining: 2 } });
     render(<RankTabTemplate isActive />);
     expect(screen.getByText(/2 more matches to qualify/i)).toBeInTheDocument();
   });
@@ -86,7 +86,7 @@ describe("RankTabTemplate", () => {
   it("shows the no-eligible empty state when nobody qualifies", () => {
     mockHook({ entries: [], me: null });
     render(<RankTabTemplate isActive />);
-    expect(screen.getByText(/no players have 30\+ matches yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no players have 20\+ matches yet/i)).toBeInTheDocument();
   });
 
   it("shows a search-specific empty state when a search returns nothing", async () => {

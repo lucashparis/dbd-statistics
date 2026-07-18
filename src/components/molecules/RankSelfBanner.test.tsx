@@ -43,13 +43,13 @@ describe("RankSelfBanner", () => {
   });
 
   it("tells the viewer how many matches remain when below the threshold", () => {
-    render(<RankSelfBanner me={{ status: "belowThreshold", total: 25, remaining: 5 }} metric="matches" />);
+    render(<RankSelfBanner me={{ status: "belowThreshold", total: 15, remaining: 5 }} metric="matches" />);
     expect(screen.getByText(/5 more matches to qualify/i)).toBeInTheDocument();
-    expect(screen.getByText(/\(25\/30 played\)/)).toBeInTheDocument();
+    expect(screen.getByText(/\(15\/20 played\)/)).toBeInTheDocument();
   });
 
   it("uses the singular form when a single match remains", () => {
-    render(<RankSelfBanner me={{ status: "belowThreshold", total: 29, remaining: 1 }} metric="matches" />);
+    render(<RankSelfBanner me={{ status: "belowThreshold", total: 19, remaining: 1 }} metric="matches" />);
     expect(screen.getByText(/1 more match to qualify/i)).toBeInTheDocument();
   });
 
