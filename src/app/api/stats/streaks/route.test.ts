@@ -18,7 +18,7 @@ const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>);
 
 let nextId = 1;
 function match(killerId: number, result: MatchResult) {
-  return { id: nextId++, userId: "u1", killerId, teamId: null, streakRunId: null, result, createdAt: new Date() };
+  return { id: nextId++, userId: "u1", killerId, teamId: null, streakRunId: null, crewMatchId: null, result, createdAt: new Date() };
 }
 
 describe("GET /api/stats/streaks", () => {

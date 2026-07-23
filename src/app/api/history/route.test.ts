@@ -19,6 +19,7 @@ const matchFixture = {
   killerId: 1,
   teamId: null,
   streakRunId: null,
+  crewMatchId: null,
   result: "win" as const,
   createdAt: new Date(),
   killer: { id: 1, name: "Trapper", imageUrl: "" },

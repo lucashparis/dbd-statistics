@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Skull } from "lucide-react";
 import { UserMenu } from "@/components/organisms/UserMenu";
+import { InviteBell } from "@/components/organisms/InviteBell";
+import { crewsEnabled } from "@/lib/flags";
 
 export function AppHeader() {
   return (
@@ -23,7 +25,10 @@ export function AppHeader() {
               </p>
             </div>
           </div>
-          <UserMenu />
+          <div className="flex items-center gap-1">
+            {crewsEnabled && <InviteBell />}
+            <UserMenu />
+          </div>
         </div>
       </div>
     </header>

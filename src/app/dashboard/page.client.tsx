@@ -6,6 +6,9 @@ import { KillersTabTemplate } from "@/components/templates/KillersTabTemplate";
 import { StatisticsTabTemplate } from "@/components/templates/StatisticsTabTemplate";
 import { StreakTabTemplate } from "@/components/templates/StreakTabTemplate";
 import { TeamTabTemplate } from "@/components/templates/TeamTabTemplate";
+import { CrewStreakTabTemplate } from "@/components/templates/CrewStreakTabTemplate";
+import { CrewTeamTabTemplate } from "@/components/templates/CrewTeamTabTemplate";
+import { crewsEnabled } from "@/lib/flags";
 import { HistoryTabTemplate } from "@/components/templates/HistoryTabTemplate";
 import { CommunityTabTemplate } from "@/components/templates/CommunityTabTemplate";
 import { RankTabTemplate } from "@/components/templates/RankTabTemplate";
@@ -58,9 +61,21 @@ export function KillersPageClient({ initialKillers }: KillersPageClientProps) {
           onNavigateToStats={navigateToStats}
         />
       }
-      streakContent={<StreakTabTemplate isActive={activeTab === "streak"} killers={killers} />}
+      streakContent={
+        crewsEnabled ? (
+          <CrewStreakTabTemplate isActive={activeTab === "streak"} killers={killers} />
+        ) : (
+          <StreakTabTemplate isActive={activeTab === "streak"} killers={killers} />
+        )
+      }
       statisticsContent={<StatisticsTabTemplate killers={killers} isLoading={isLoading} statsNav={statsNav} onNavigateToStats={navigateToStats} />}
-      teamContent={<TeamTabTemplate isActive={activeTab === "team"} />}
+      teamContent={
+        crewsEnabled ? (
+          <CrewTeamTabTemplate isActive={activeTab === "team"} />
+        ) : (
+          <TeamTabTemplate isActive={activeTab === "team"} />
+        )
+      }
       historyContent={<HistoryTabTemplate isActive={activeTab === "history"} />}
       communityContent={<CommunityTabTemplate isActive={activeTab === "community"} />}
       rankContent={<RankTabTemplate isActive={activeTab === "rank"} />}

@@ -18,6 +18,17 @@ enum StreakStatus {
   ended
 }
 
+enum CrewMemberStatus {
+  pending
+  accepted
+  declined
+}
+
+enum CrewWritePolicy {
+  hostOnly
+  allMembers
+}
+
 model User {
   id        String      @id @default(cuid())
   email     String      @unique
@@ -30,6 +41,10 @@ model User {
   matches   Match[]
   streaks   StreakRun[]
   profile   Profile?
+
+  crewsOwned         Crew[]       @relation("CrewOwner")
+  crewMemberships    CrewMember[]
+  crewMatchesLogged  CrewMatch[]  @relation("CrewMatchLogger")
 }
 
 model Killer {
@@ -40,6 +55,7 @@ model Killer {
   updatedAt DateTime  @updatedAt
   matches   Match[]
   profiles  Profile[]
+  crewMatches CrewMatch[]
 }
 
 model Survivor {
@@ -114,16 +130,19 @@ model Match {
   killerId    Int
   teamId      Int?
   streakRunId Int?
+  crewMatchId Int?
   result      Result
   createdAt   DateTime   @default(now())
   user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   killer      Killer     @relation(fields: [killerId], references: [id], onDelete: Cascade)
   team        Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
   streakRun   StreakRun? @relation(fields: [streakRunId], references: [id], onDelete: SetNull)
+  crewMatch   CrewMatch? @relation(fields: [crewMatchId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([killerId])
   @@index([teamId])
+  @@index([crewMatchId])
   @@index([createdAt])
 }
 
@@ -141,4 +160,70 @@ model StreakRun {
 
   @@index([userId])
   @@index([teamId])
+}
+
+// A collaborative crew: a real-user team that shares one streak. The owner is an
+// auto-accepted member; up to 3 others are invited (CrewMember rows). A logged
+// match is one CrewMatch (source of truth for the shared streak) fanned out to
+// one personal Match per accepted member so it also feeds each member's stats.
+model Crew {
+  id          Int             @id @default(autoincrement())
+  name        String
+  ownerId     String
+  writePolicy CrewWritePolicy @default(allMembers)
+  createdAt   DateTime        @default(now())
+  owner       User            @relation("CrewOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     CrewMember[]
+  matches     CrewMatch[]
+  streaks     CrewStreakRun[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+}
+
+model CrewMember {
+  id          Int              @id @default(autoincrement())
+  crewId      Int
+  userId      String
+  status      CrewMemberStatus @default(pending)
+  isOwner     Boolean          @default(false)
+  invitedAt   DateTime         @default(now())
+  respondedAt DateTime?
+  crew        Crew             @relation(fields: [crewId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([crewId, userId])
+  @@index([userId, status])
+  @@index([crewId])
+}
+
+model CrewMatch {
+  id              Int            @id @default(autoincrement())
+  crewId          Int
+  killerId        Int
+  result          Result
+  loggedByUserId  String
+  crewStreakRunId Int?
+  createdAt       DateTime       @default(now())
+  crew            Crew           @relation(fields: [crewId], references: [id], onDelete: Cascade)
+  killer          Killer         @relation(fields: [killerId], references: [id], onDelete: Cascade)
+  loggedBy        User           @relation("CrewMatchLogger", fields: [loggedByUserId], references: [id], onDelete: Cascade)
+  streakRun       CrewStreakRun? @relation(fields: [crewStreakRunId], references: [id], onDelete: SetNull)
+  projections     Match[]
+
+  @@index([crewId])
+  @@index([createdAt])
+}
+
+model CrewStreakRun {
+  id        Int          @id @default(autoincrement())
+  crewId    Int
+  winCount  Int          @default(0)
+  status    StreakStatus @default(active)
+  startedAt DateTime     @default(now())
+  endedAt   DateTime?
+  crew      Crew         @relation(fields: [crewId], references: [id], onDelete: Cascade)
+  matches   CrewMatch[]
+
+  @@index([crewId])
 }

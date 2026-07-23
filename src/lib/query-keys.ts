@@ -10,6 +10,9 @@ export const queryKeys = {
   profile: ["profile"] as const,
   community: ["community"] as const,
   rank: ["rank"] as const,
+  crews: ["crews"] as const,
+  invites: ["invites"] as const,
+  invitees: ["invitees"] as const,
 };
 
 // A `Match` write feeds every match-derived read: the killer grid/pie,
