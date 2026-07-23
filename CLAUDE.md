@@ -291,6 +291,7 @@ Non-negotiable prevention checklist (see the skill for the full list):
 
 - **Apply the `technical-audit-next` prevention baseline to every new implementation** — see the "Technical audit & prevention" section. New code must not reintroduce the catalogued failure classes (auth, Zod at the boundary, error handling, boundaries/cache, security, a11y, tests).
 - **Tests are mandatory** — every new feature, hook, utility, component, or API route must ship with a co-located `.test.ts` / `.test.tsx` file. See the Testing section for details.
+- **Document every user-facing feature in the changelog** — whenever you ship a new user-facing feature, add a `ChangelogEntry` to the `ENTRIES` array in `src/lib/changelog.ts` (unique `id`, `feature`, `date` in `YYYY-MM-DD`, English `description`, `requestedBy`). This is part of the feature's delivery, not a follow-up. Internal refactors, infra, and bug fixes that don't change what the user sees do not need an entry.
 - **No comments** unless the WHY is non-obvious. Well-named identifiers are enough.
 - **Guard clauses over else** — return or throw early to handle error/edge cases first; never nest the happy path inside an `else` block. This keeps code flat and close to the left margin.
 - **Auth first in every data route** — `const session = await auth(); if (!session?.user) return 401;` then scope all queries by `session.user.id`.

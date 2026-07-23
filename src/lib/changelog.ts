@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "@/types/changelog";
 
 const ENTRIES: ChangelogEntry[] = [
   {
+    id: "shared-crew-streaks",
+    feature: "Shared crew streaks",
+    date: "2026-07-22",
+    description:
+      "Team up with real players in a crew and grow one shared win streak. Invite up to three members by their community nick, log matches together, and every game counts toward each member's stats.",
+    requestedBy: "Community",
+  },
+  {
     id: "main-survivor",
     feature: "Main survivor on profile",
     date: "2026-07-14",
