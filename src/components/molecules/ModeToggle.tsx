@@ -27,15 +27,16 @@ export function ModeToggle({ className }: { className?: string }) {
             key={value}
             type="button"
             aria-pressed={active}
+            aria-label={label}
             onClick={() => setMode(value)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer",
+              "inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer sm:px-3",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood/60",
               active ? "bg-blood text-white" : "text-muted hover:text-white"
             )}
           >
             <Icon size={15} aria-hidden />
-            {label}
+            <span className="hidden sm:inline">{label}</span>
           </button>
         );
       })}

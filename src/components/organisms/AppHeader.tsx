@@ -8,24 +8,24 @@ export function AppHeader({ headerExtra }: { headerExtra?: React.ReactNode }) {
   return (
     <header className="border-b border-subtle bg-surface/80 backdrop-blur-md sticky top-0 z-40">
       <div className="mx-auto max-w-screen-2xl px-4 py-4 sm:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-blood/40 bg-blood/10 glow-blood">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-blood/40 bg-blood/10 glow-blood">
               <Skull size={22} className="text-blood" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1
-                className="text-xl font-bold uppercase tracking-[0.15em] text-white"
+                className="truncate text-lg font-bold uppercase tracking-[0.15em] text-white sm:text-xl"
                 style={{ fontFamily: "var(--font-cinzel), serif" }}
               >
                 DBD Killer
               </h1>
-              <p className="text-[10px] uppercase tracking-widest text-muted">
+              <p className="hidden truncate text-[10px] uppercase tracking-widest text-muted sm:block">
                 Dead by Daylight · Statistics
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             {headerExtra}
             {crewsEnabled && <InviteBell />}
             <UserMenu />
