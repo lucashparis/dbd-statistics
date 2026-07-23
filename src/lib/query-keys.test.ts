@@ -10,14 +10,15 @@ describe("invalidateMatchDerived", () => {
     invalidateMatchDerived(queryClient);
 
     const invalidated = invalidateQueries.mock.calls.map((c) => c[0].queryKey);
+    // Invalidation is by first-segment prefix so both perspectives are busted.
     expect(invalidated).toEqual(
-      expect.arrayContaining([
-        queryKeys.killers,
-        queryKeys.history,
-        queryKeys.streaks,
-        queryKeys.community,
-        queryKeys.rank,
-      ])
+      expect.arrayContaining([["killers"], ["history"], ["streaks"], ["community"], ["rank"]])
     );
+  });
+
+  it("keys each match-derived read by perspective", () => {
+    expect(queryKeys.killers("survivor")).toEqual(["killers", "survivor"]);
+    expect(queryKeys.killers("killer")).toEqual(["killers", "killer"]);
+    expect(queryKeys.history("killer")).toEqual(["history", "killer"]);
   });
 });

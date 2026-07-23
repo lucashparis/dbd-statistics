@@ -15,6 +15,12 @@ export function parsePage(value: string | null): number {
   return pageSchema.parse(value ?? 1);
 }
 
+const perspectiveSchema = z.enum(["survivor", "killer"]).catch("survivor");
+
+export function parsePerspective(value: string | null): "survivor" | "killer" {
+  return perspectiveSchema.parse(value ?? "survivor");
+}
+
 export function mutationError(context: string, e: unknown): NextResponse {
   if (
     e instanceof Prisma.PrismaClientKnownRequestError &&

@@ -2,19 +2,30 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import type { Perspective } from "@/types/killer";
 import type { RankMetric, RankPage } from "@/types/profile";
 
-async function fetchRankPage(metric: RankMetric, search: string, page: number): Promise<RankPage> {
-  const params = new URLSearchParams({ metric, search, page: String(page) });
+async function fetchRankPage(
+  metric: RankMetric,
+  search: string,
+  page: number,
+  perspective: Perspective
+): Promise<RankPage> {
+  const params = new URLSearchParams({ metric, search, page: String(page), perspective });
   const res = await fetch(`/api/rank?${params.toString()}`);
   if (!res.ok) throw new Error(`Rank request failed: ${res.status}`);
   return (await res.json()) as RankPage;
 }
 
-export function useRank(isActive: boolean, metric: RankMetric, search: string) {
+export function useRank(
+  isActive: boolean,
+  metric: RankMetric,
+  search: string,
+  perspective: Perspective = "survivor"
+) {
   const query = useInfiniteQuery({
-    queryKey: [...queryKeys.rank, metric, search],
-    queryFn: ({ pageParam }) => fetchRankPage(metric, search, pageParam),
+    queryKey: [...queryKeys.rank(perspective), metric, search],
+    queryFn: ({ pageParam }) => fetchRankPage(metric, search, pageParam, perspective),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) =>
       lastPage.hasMore ? allPages.length + 1 : undefined,

@@ -34,7 +34,7 @@ export function useProfile(enabled = true) {
     },
     onSuccess: (profile) => {
       queryClient.setQueryData(queryKeys.profile, profile);
-      queryClient.invalidateQueries({ queryKey: queryKeys.community });
+      queryClient.invalidateQueries({ queryKey: ["community"] });
       toast.success("Profile saved");
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "Could not save profile"),
@@ -47,7 +47,7 @@ export function useProfile(enabled = true) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.profile });
-      queryClient.invalidateQueries({ queryKey: queryKeys.community });
+      queryClient.invalidateQueries({ queryKey: ["community"] });
       toast.success("Profile removed from the community");
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "Could not remove profile"),

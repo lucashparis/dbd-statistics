@@ -40,6 +40,24 @@ describe("getKillersForUser", () => {
     expect(result[1]).toMatchObject({ id: 2, wins: 0, losses: 0 });
     expect(typeof result[0].createdAt).toBe("string");
   });
+
+  it("defaults to the survivor perspective", async () => {
+    vi.mocked(prisma.killer.findMany).mockResolvedValueOnce([trapper]);
+    vi.mocked(prisma.match.groupBy).mockResolvedValueOnce([] as never);
+    await getKillersForUser("u1");
+    expect(vi.mocked(prisma.match.groupBy)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1", perspective: "survivor" } })
+    );
+  });
+
+  it("scopes counts to the killer perspective, isolating survivor data", async () => {
+    vi.mocked(prisma.killer.findMany).mockResolvedValueOnce([trapper]);
+    vi.mocked(prisma.match.groupBy).mockResolvedValueOnce([] as never);
+    await getKillersForUser("u1", "killer");
+    expect(vi.mocked(prisma.match.groupBy)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1", perspective: "killer" } })
+    );
+  });
 });
 
 describe("getKillerForUser", () => {
@@ -55,5 +73,17 @@ describe("getKillerForUser", () => {
     vi.mocked(prisma.match.count).mockResolvedValueOnce(3).mockResolvedValueOnce(2);
     const result = await getKillerForUser("u1", 1);
     expect(result).toMatchObject({ id: 1, wins: 3, losses: 2 });
+    expect(vi.mocked(prisma.match.count)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1", killerId: 1, result: "win", perspective: "survivor" } })
+    );
+  });
+
+  it("counts only killer-perspective matches when asked", async () => {
+    vi.mocked(prisma.killer.findUnique).mockResolvedValueOnce(trapper);
+    vi.mocked(prisma.match.count).mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    await getKillerForUser("u1", 1, "killer");
+    expect(vi.mocked(prisma.match.count)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1", killerId: 1, result: "win", perspective: "killer" } })
+    );
   });
 });

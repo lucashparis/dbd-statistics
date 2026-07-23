@@ -1,20 +1,32 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Skull, Ghost } from "lucide-react";
 import { ProfileCard } from "@/components/molecules/ProfileCard";
+import { cn } from "@/lib/utils";
 import type { PublicProfileSummary } from "@/types/profile";
+import type { Perspective } from "@/types/killer";
 
 interface CommunityCarouselProps {
   profiles: PublicProfileSummary[];
+  // Present only when killer mode is enabled — enables the perspective toggle.
+  killerProfiles?: PublicProfileSummary[] | null;
 }
 
 const CARD_GAP = 16;
 const ADVANCE_MS = 4000;
 
-export function CommunityCarousel({ profiles }: CommunityCarouselProps) {
+const OPTIONS: { value: Perspective; label: string; Icon: typeof Skull }[] = [
+  { value: "survivor", label: "Surv", Icon: Ghost },
+  { value: "killer", label: "Killer", Icon: Skull },
+];
+
+export function CommunityCarousel({ profiles, killerProfiles }: CommunityCarouselProps) {
   const trackRef = React.useRef<HTMLDivElement>(null);
   const [paused, setPaused] = React.useState(false);
+  const [perspective, setPerspective] = React.useState<Perspective>("survivor");
+
+  const shown = perspective === "killer" && killerProfiles ? killerProfiles : profiles;
 
   function step(dir: 1 | -1) {
     const el = trackRef.current;
@@ -43,7 +55,7 @@ export function CommunityCarousel({ profiles }: CommunityCarouselProps) {
     return () => clearInterval(id);
   }, [paused]);
 
-  if (profiles.length === 0) return null;
+  if (profiles.length === 0 && (!killerProfiles || killerProfiles.length === 0)) return null;
 
   return (
     <section
@@ -56,9 +68,38 @@ export function CommunityCarousel({ profiles }: CommunityCarouselProps) {
       onBlurCapture={() => setPaused(false)}
     >
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-xs uppercase tracking-[0.3em] text-muted">
-          From the Fog · Community
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="font-display text-xs uppercase tracking-[0.3em] text-muted">
+            From the Fog · Community
+          </h2>
+          {killerProfiles && (
+            <div
+              role="group"
+              aria-label="Play perspective"
+              className="inline-flex rounded-lg border border-subtle bg-surface-2 p-0.5"
+            >
+              {OPTIONS.map(({ value, label, Icon }) => {
+                const isActive = value === perspective;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => setPerspective(value)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 cursor-pointer",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood/60",
+                      isActive ? "bg-blood text-white" : "text-muted hover:text-white"
+                    )}
+                  >
+                    <Icon size={13} aria-hidden />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <div className="flex gap-2">
           <button
             type="button"
@@ -83,7 +124,7 @@ export function CommunityCarousel({ profiles }: CommunityCarouselProps) {
         ref={trackRef}
         className="-m-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scrollbar-dark p-4"
       >
-        {profiles.map((profile) => (
+        {shown.map((profile) => (
           <div
             key={profile.userId}
             data-card

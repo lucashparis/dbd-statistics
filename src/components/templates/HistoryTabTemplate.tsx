@@ -3,14 +3,16 @@
 import * as React from "react";
 import { MatchHistoryList } from "@/components/organisms/MatchHistoryList";
 import { useHistory } from "@/hooks/useHistory";
+import type { Perspective } from "@/types/killer";
 
 interface HistoryTabTemplateProps {
   isActive: boolean;
+  perspective?: Perspective;
 }
 
-export function HistoryTabTemplate({ isActive }: HistoryTabTemplateProps) {
+export function HistoryTabTemplate({ isActive, perspective = "survivor" }: HistoryTabTemplateProps) {
   const { matches, hasMore, loading, loadingMore, error, loadMore, retry } =
-    useHistory(isActive);
+    useHistory(isActive, perspective);
 
   return (
     <div className="space-y-6">

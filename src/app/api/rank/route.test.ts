@@ -38,7 +38,13 @@ describe("GET /api/rank", () => {
       page: 2,
       pageSize: 10,
       viewerId: "viewer1",
+      perspective: "survivor",
     });
+  });
+
+  it("forwards the killer perspective to the lib", async () => {
+    await GET(req("?perspective=killer"));
+    expect(vi.mocked(getRankedProfiles).mock.calls[0][0].perspective).toBe("killer");
   });
 
   it("coerces an invalid metric to 'matches'", async () => {

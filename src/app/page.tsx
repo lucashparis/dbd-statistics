@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Skull } from "lucide-react";
 import { auth } from "@/auth";
 import { getPublicProfiles } from "@/lib/community";
+import { killerModeEnabled } from "@/lib/flags";
 import { CommunityCarousel } from "@/components/organisms/CommunityCarousel";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,12 @@ export default async function HomePage() {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
 
-  const profiles = await getPublicProfiles({ limit: 12 });
+  const [profiles, killerProfiles] = await Promise.all([
+    getPublicProfiles({ limit: 12, perspective: "survivor" }),
+    killerModeEnabled
+      ? getPublicProfiles({ limit: 12, perspective: "killer" })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden">
@@ -68,9 +74,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {profiles.length > 0 && (
+      {(profiles.length > 0 || (killerProfiles?.length ?? 0) > 0) && (
         <section className="relative z-10 mx-auto w-full pb-16">
-          <CommunityCarousel profiles={profiles} />
+          <CommunityCarousel profiles={profiles} killerProfiles={killerProfiles} />
         </section>
       )}
     </main>

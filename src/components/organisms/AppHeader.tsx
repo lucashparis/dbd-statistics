@@ -4,7 +4,7 @@ import { UserMenu } from "@/components/organisms/UserMenu";
 import { InviteBell } from "@/components/organisms/InviteBell";
 import { crewsEnabled } from "@/lib/flags";
 
-export function AppHeader() {
+export function AppHeader({ headerExtra }: { headerExtra?: React.ReactNode }) {
   return (
     <header className="border-b border-subtle bg-surface/80 backdrop-blur-md sticky top-0 z-40">
       <div className="mx-auto max-w-screen-2xl px-4 py-4 sm:px-6">
@@ -25,7 +25,8 @@ export function AppHeader() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            {headerExtra}
             {crewsEnabled && <InviteBell />}
             <UserMenu />
           </div>

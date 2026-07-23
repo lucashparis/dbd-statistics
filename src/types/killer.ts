@@ -1,4 +1,6 @@
-import type { Result } from "@prisma/client";
+import type { Result, Perspective as PrismaPerspective } from "@prisma/client";
+
+export type Perspective = PrismaPerspective;
 
 export interface Killer {
   id: number;

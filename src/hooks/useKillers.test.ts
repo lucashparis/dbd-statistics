@@ -22,7 +22,7 @@ const mockFetch = vi.fn();
 // endpoints. `patchOk` decides whether the mutation succeeds.
 function routeFetch(listAfter: typeof killerFixture[], patchOk: boolean) {
   mockFetch.mockImplementation((url: string) => {
-    if (url === "/api/killers") {
+    if (url.startsWith("/api/killers?")) {
       return Promise.resolve({ ok: true, json: async () => listAfter });
     }
     return Promise.resolve({

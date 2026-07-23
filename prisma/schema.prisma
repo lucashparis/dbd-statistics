@@ -13,6 +13,11 @@ enum Result {
   loss
 }
 
+enum Perspective {
+  survivor
+  killer
+}
+
 enum StreakStatus {
   active
   ended
@@ -30,12 +35,13 @@ enum CrewWritePolicy {
 }
 
 model User {
-  id        String      @id @default(cuid())
-  email     String      @unique
-  name      String?
-  password  String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id            String      @id @default(cuid())
+  email         String      @unique
+  name          String?
+  password      String
+  preferredMode Perspective @default(survivor)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   players   Player[]
   teams     Team[]
   matches   Match[]
@@ -125,25 +131,28 @@ model TeamPlayer {
 }
 
 model Match {
-  id          Int        @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   userId      String?
   killerId    Int
   teamId      Int?
   streakRunId Int?
   crewMatchId Int?
   result      Result
-  createdAt   DateTime   @default(now())
-  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  killer      Killer     @relation(fields: [killerId], references: [id], onDelete: Cascade)
-  team        Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  streakRun   StreakRun? @relation(fields: [streakRunId], references: [id], onDelete: SetNull)
-  crewMatch   CrewMatch? @relation(fields: [crewMatchId], references: [id], onDelete: Cascade)
+  perspective Perspective @default(survivor)
+  createdAt   DateTime    @default(now())
+  user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  killer      Killer      @relation(fields: [killerId], references: [id], onDelete: Cascade)
+  team        Team?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  streakRun   StreakRun?  @relation(fields: [streakRunId], references: [id], onDelete: SetNull)
+  crewMatch   CrewMatch?  @relation(fields: [crewMatchId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([killerId])
   @@index([teamId])
   @@index([crewMatchId])
   @@index([createdAt])
+  @@index([userId, perspective])
+  @@index([killerId, perspective])
 }
 
 model StreakRun {

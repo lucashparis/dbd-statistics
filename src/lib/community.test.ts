@@ -113,7 +113,7 @@ describe("getPublicProfile", () => {
     expect(detail?.mainSurv?.name).toBe("Nea Karlsson");
     expect(detail?.stats).toEqual({ total: 5, wins: 4, losses: 1, winRate: 80 });
     expect(detail?.killers).toHaveLength(2);
-    expect(detail?.streaks.global.longestWin).toBe(4);
+    expect(detail?.streaks?.global.longestWin).toBe(4);
   });
 
   it("degrades to null when the database fails", async () => {

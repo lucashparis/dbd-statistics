@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Killer } from "@/types/killer";
+import type { Killer, Perspective } from "@/types/killer";
 
 interface KillerRow {
   id: number;
@@ -21,12 +21,15 @@ function serialize(k: KillerRow, wins: number, losses: number): Killer {
   };
 }
 
-export async function getKillersForUser(userId: string): Promise<Killer[]> {
+export async function getKillersForUser(
+  userId: string,
+  perspective: Perspective = "survivor"
+): Promise<Killer[]> {
   const [killers, grouped] = await Promise.all([
     prisma.killer.findMany({ orderBy: { name: "asc" } }),
     prisma.match.groupBy({
       by: ["killerId", "result"],
-      where: { userId },
+      where: { userId, perspective },
       _count: { _all: true },
     }),
   ]);
@@ -42,14 +45,15 @@ export async function getKillersForUser(userId: string): Promise<Killer[]> {
 
 export async function getKillerForUser(
   userId: string,
-  killerId: number
+  killerId: number,
+  perspective: Perspective = "survivor"
 ): Promise<Killer | null> {
   const killer = await prisma.killer.findUnique({ where: { id: killerId } });
   if (!killer) return null;
 
   const [wins, losses] = await Promise.all([
-    prisma.match.count({ where: { userId, killerId, result: "win" } }),
-    prisma.match.count({ where: { userId, killerId, result: "loss" } }),
+    prisma.match.count({ where: { userId, killerId, result: "win", perspective } }),
+    prisma.match.count({ where: { userId, killerId, result: "loss", perspective } }),
   ]);
 
   return serialize(killer, wins, losses);

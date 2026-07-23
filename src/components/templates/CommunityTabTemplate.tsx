@@ -6,13 +6,15 @@ import { useCommunity } from "@/hooks/useCommunity";
 import { ProfileCard } from "@/components/molecules/ProfileCard";
 import { EmptyState } from "@/components/molecules/EmptyState";
 import { Button } from "@/components/atoms/Button";
+import type { Perspective } from "@/types/killer";
 
 interface CommunityTabTemplateProps {
   isActive: boolean;
+  perspective?: Perspective;
 }
 
-export function CommunityTabTemplate({ isActive }: CommunityTabTemplateProps) {
-  const { profiles, hasMore, loading, loadingMore, error, loadMore, retry } = useCommunity(isActive);
+export function CommunityTabTemplate({ isActive, perspective = "survivor" }: CommunityTabTemplateProps) {
+  const { profiles, hasMore, loading, loadingMore, error, loadMore, retry } = useCommunity(isActive, perspective);
 
   if (loading) {
     return (

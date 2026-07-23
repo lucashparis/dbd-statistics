@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "@/types/changelog";
 
 const ENTRIES: ChangelogEntry[] = [
   {
+    id: "killer-mode",
+    feature: "Killer mode",
+    date: "2026-07-23",
+    description:
+      "Switch between Survivor and Killer perspectives from the header. Killer mode tracks the games you play as the killer — with its own killer grid, community, rank, statistics and history — completely separate from your survivor stats. Your choice is remembered across devices.",
+    requestedBy: "Léo",
+  },
+  {
     id: "shared-crew-streaks",
     feature: "Shared crew streaks",
     date: "2026-07-22",

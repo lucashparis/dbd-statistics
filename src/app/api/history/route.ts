@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { parsePage } from "@/lib/api";
+import { parsePage, parsePerspective } from "@/lib/api";
 
 const LIMIT = 10;
 
@@ -15,11 +15,12 @@ export async function GET(req: Request) {
     const userId = session.user.id;
     const { searchParams } = new URL(req.url);
     const page = parsePage(searchParams.get("page"));
+    const perspective = parsePerspective(searchParams.get("perspective"));
     const skip = (page - 1) * LIMIT;
 
     const [matches, total] = await Promise.all([
       prisma.match.findMany({
-        where: { userId },
+        where: { userId, perspective },
         skip,
         take: LIMIT,
         orderBy: { createdAt: "desc" },
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
           killer: { select: { id: true, name: true, imageUrl: true } },
         },
       }),
-      prisma.match.count({ where: { userId } }),
+      prisma.match.count({ where: { userId, perspective } }),
     ]);
 
     return NextResponse.json({

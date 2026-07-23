@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { AppHeader } from "@/components/organisms/AppHeader";
 import { PublicProfileView } from "@/components/organisms/PublicProfileView";
 import { getPublicProfile } from "@/lib/community";
+import { killerModeEnabled } from "@/lib/flags";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,11 @@ export default async function CommunityProfilePage({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
-  const profile = await getPublicProfile(userId);
-  if (!profile) notFound();
+  const [survivor, killer] = await Promise.all([
+    getPublicProfile(userId, "survivor"),
+    killerModeEnabled ? getPublicProfile(userId, "killer") : Promise.resolve(null),
+  ]);
+  if (!survivor) notFound();
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -27,7 +31,7 @@ export default async function CommunityProfilePage({
           <ArrowLeft size={14} aria-hidden />
           Back
         </Link>
-        <PublicProfileView profile={profile} />
+        <PublicProfileView survivor={survivor} killer={killer} />
       </main>
     </div>
   );

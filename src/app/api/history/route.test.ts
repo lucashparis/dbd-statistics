@@ -21,6 +21,7 @@ const matchFixture = {
   streakRunId: null,
   crewMatchId: null,
   result: "win" as const,
+  perspective: "survivor" as const,
   createdAt: new Date(),
   killer: { id: 1, name: "Trapper", imageUrl: "" },
 };
@@ -62,9 +63,20 @@ describe("GET /api/history", () => {
     vi.mocked(prisma.match.count).mockResolvedValueOnce(1);
     await GET(req());
     expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "u1" } })
+      expect.objectContaining({ where: { userId: "u1", perspective: "survivor" } })
     );
-    expect(vi.mocked(prisma.match.count)).toHaveBeenCalledWith({ where: { userId: "u1" } });
+    expect(vi.mocked(prisma.match.count)).toHaveBeenCalledWith({
+      where: { userId: "u1", perspective: "survivor" },
+    });
+  });
+
+  it("scopes the query to the killer perspective when requested", async () => {
+    vi.mocked(prisma.match.findMany).mockResolvedValueOnce([matchFixture]);
+    vi.mocked(prisma.match.count).mockResolvedValueOnce(1);
+    await GET(new Request("http://localhost/api/history?perspective=killer"));
+    expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1", perspective: "killer" } })
+    );
   });
 
   it("uses the provided page number to skip results", async () => {

@@ -20,6 +20,7 @@ function userRow(overrides: Partial<{ id: string; email: string }> = {}) {
     email: "a@b.com",
     name: null,
     password: "hashed",
+    preferredMode: "survivor" as const,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

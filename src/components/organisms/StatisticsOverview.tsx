@@ -10,7 +10,7 @@ import type { KillerStats, StreaksData } from "@/types/killer";
 interface StatisticsOverviewProps {
   killers: KillerStats[];
   selectedKiller: KillerStats | null;
-  streaks?: StreaksData;
+  streaks?: StreaksData | null;
   onNavigateToStats?: (killer: KillerStats) => void;
   className?: string;
 }

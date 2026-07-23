@@ -45,7 +45,7 @@ describe("GET /api/community/profiles", () => {
     const body = await res.json();
     expect(body.profiles).toHaveLength(12);
     expect(body.hasMore).toBe(true);
-    expect(vi.mocked(getPublicProfiles)).toHaveBeenCalledWith({ limit: 13 });
+    expect(vi.mocked(getPublicProfiles)).toHaveBeenCalledWith({ limit: 13, perspective: "survivor" });
   });
 
   it("reports hasMore=false on the last page", async () => {

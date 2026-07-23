@@ -18,7 +18,7 @@ const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>);
 
 let nextId = 1;
 function match(killerId: number, result: MatchResult) {
-  return { id: nextId++, userId: "u1", killerId, teamId: null, streakRunId: null, crewMatchId: null, result, createdAt: new Date() };
+  return { id: nextId++, userId: "u1", killerId, teamId: null, streakRunId: null, crewMatchId: null, result, perspective: "survivor" as const, createdAt: new Date() };
 }
 
 describe("GET /api/stats/streaks", () => {
@@ -73,7 +73,7 @@ describe("GET /api/stats/streaks", () => {
     vi.mocked(prisma.match.findMany).mockResolvedValueOnce([]);
     await GET();
     expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "u1" }, orderBy: { createdAt: "asc" } })
+      expect.objectContaining({ where: { userId: "u1", perspective: "survivor" }, orderBy: { createdAt: "asc" } })
     );
   });
 

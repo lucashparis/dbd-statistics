@@ -24,7 +24,7 @@ const detail: PublicProfileDetail = {
 
 describe("PublicProfileView", () => {
   it("renders the header, main killer, channel link and the stats overview", () => {
-    render(<PublicProfileView profile={detail} />);
+    render(<PublicProfileView survivor={detail} />);
     expect(screen.getByRole("heading", { name: "Lucas" })).toBeInTheDocument();
     expect(screen.getByText("@dead")).toBeInTheDocument();
     expect(screen.getByText(/main · trapper/i)).toBeInTheDocument();
@@ -36,17 +36,25 @@ describe("PublicProfileView", () => {
   });
 
   it("falls back to the nick as the heading when there is no name", () => {
-    render(<PublicProfileView profile={{ ...detail, name: null }} />);
+    render(<PublicProfileView survivor={{ ...detail, name: null }} />);
     expect(screen.getByRole("heading", { name: "dead" })).toBeInTheDocument();
   });
 
   it("shows the main survivor name when present", () => {
-    render(<PublicProfileView profile={detail} />);
+    render(<PublicProfileView survivor={detail} />);
     expect(screen.getByText(/surv · nea karlsson/i)).toBeInTheDocument();
   });
 
   it("omits the main survivor line when there is none", () => {
-    render(<PublicProfileView profile={{ ...detail, mainSurv: null }} />);
+    render(<PublicProfileView survivor={{ ...detail, mainSurv: null }} />);
     expect(screen.queryByText(/surv ·/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the perspective toggle only when a killer detail is provided", () => {
+    const { rerender } = render(<PublicProfileView survivor={detail} />);
+    expect(screen.queryByRole("group", { name: /play perspective/i })).not.toBeInTheDocument();
+
+    rerender(<PublicProfileView survivor={detail} killer={{ ...detail, streaks: null }} />);
+    expect(screen.getByRole("group", { name: /play perspective/i })).toBeInTheDocument();
   });
 });

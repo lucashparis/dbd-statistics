@@ -1,6 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { Prisma } from "@prisma/client";
-import { parseId, parsePage, mutationError } from "./api";
+import { parseId, parsePage, parsePerspective, mutationError } from "./api";
+
+describe("parsePerspective", () => {
+  it("accepts the two valid perspectives", () => {
+    expect(parsePerspective("survivor")).toBe("survivor");
+    expect(parsePerspective("killer")).toBe("killer");
+  });
+
+  it("defaults to survivor for null or invalid values", () => {
+    expect(parsePerspective(null)).toBe("survivor");
+    expect(parsePerspective("bogus")).toBe("survivor");
+    expect(parsePerspective("")).toBe("survivor");
+  });
+});
 
 describe("parseId", () => {
   it("parses positive integers", () => {

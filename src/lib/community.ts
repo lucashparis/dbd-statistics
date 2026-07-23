@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getKillersForUser } from "@/lib/killers";
 import { getStreaksForUser } from "@/lib/streak";
 import { computeStats } from "@/lib/utils";
+import type { Perspective } from "@/types/killer";
 import {
   RANK_MIN_MATCHES,
   type ProfileStats,
@@ -50,11 +51,14 @@ function toSummary(row: PublicRow, stats: ProfileStats): PublicProfileSummary {
   };
 }
 
-async function statsByUser(userIds: string[]): Promise<Map<string, ProfileStats>> {
+async function statsByUser(
+  userIds: string[],
+  perspective: Perspective
+): Promise<Map<string, ProfileStats>> {
   if (userIds.length === 0) return new Map();
   const grouped = await prisma.match.groupBy({
     by: ["userId", "result"],
-    where: { userId: { in: userIds } },
+    where: { userId: { in: userIds }, perspective },
     _count: { _all: true },
   });
 
@@ -80,13 +84,16 @@ async function statsByUser(userIds: string[]): Promise<Map<string, ProfileStats>
   return out;
 }
 
-async function computePublicProfiles(limit: number): Promise<PublicProfileSummary[]> {
+async function computePublicProfiles(
+  limit: number,
+  perspective: Perspective
+): Promise<PublicProfileSummary[]> {
   const profiles = (await prisma.profile.findMany({
     select: publicSelect,
   })) as PublicRow[];
   if (profiles.length === 0) return [];
 
-  const stats = await statsByUser(profiles.map((p) => p.userId));
+  const stats = await statsByUser(profiles.map((p) => p.userId), perspective);
 
   return profiles
     .map((p) => ({ row: p, stats: stats.get(p.userId) ?? ZERO_STATS }))
@@ -99,12 +106,15 @@ async function computePublicProfiles(limit: number): Promise<PublicProfileSummar
     .map(({ row, stats }) => toSummary(row, stats));
 }
 
-export async function getPublicProfiles(opts: { limit: number }): Promise<PublicProfileSummary[]> {
-  const { limit } = opts;
+export async function getPublicProfiles(opts: {
+  limit: number;
+  perspective?: Perspective;
+}): Promise<PublicProfileSummary[]> {
+  const { limit, perspective = "survivor" } = opts;
   try {
     return await unstable_cache(
-      () => computePublicProfiles(limit),
-      ["community-profiles", String(limit)],
+      () => computePublicProfiles(limit, perspective),
+      ["community-profiles", String(limit), perspective],
       { tags: ["community"], revalidate: COMMUNITY_TTL_SECONDS }
     )();
   } catch (e) {
@@ -113,16 +123,20 @@ export async function getPublicProfiles(opts: { limit: number }): Promise<Public
   }
 }
 
-async function computePublicProfile(userId: string): Promise<PublicProfileDetail | null> {
+async function computePublicProfile(
+  userId: string,
+  perspective: Perspective
+): Promise<PublicProfileDetail | null> {
   const profile = (await prisma.profile.findUnique({
     where: { userId },
     select: publicSelect,
   })) as PublicRow | null;
   if (!profile) return null;
 
+  // Killer perspective has no streaks — only the survivor side tracks runs.
   const [killers, streaks] = await Promise.all([
-    getKillersForUser(userId).then((list) => list.map(computeStats)),
-    getStreaksForUser(userId),
+    getKillersForUser(userId, perspective).then((list) => list.map(computeStats)),
+    perspective === "survivor" ? getStreaksForUser(userId) : Promise.resolve(null),
   ]);
 
   const wins = killers.reduce((s, k) => s + k.wins, 0);
@@ -138,11 +152,14 @@ async function computePublicProfile(userId: string): Promise<PublicProfileDetail
   return { ...toSummary(profile, stats), killers, streaks };
 }
 
-export async function getPublicProfile(userId: string): Promise<PublicProfileDetail | null> {
+export async function getPublicProfile(
+  userId: string,
+  perspective: Perspective = "survivor"
+): Promise<PublicProfileDetail | null> {
   try {
     return await unstable_cache(
-      () => computePublicProfile(userId),
-      ["community-profile", userId],
+      () => computePublicProfile(userId, perspective),
+      ["community-profile", userId, perspective],
       { tags: ["community", `profile:${userId}`], revalidate: COMMUNITY_TTL_SECONDS }
     )();
   } catch (e) {
@@ -175,11 +192,14 @@ function rankComparator(metric: RankMetric) {
   };
 }
 
-async function computeRankBase(metric: RankMetric): Promise<RankEntry[]> {
+async function computeRankBase(
+  metric: RankMetric,
+  perspective: Perspective
+): Promise<RankEntry[]> {
   const profiles = (await prisma.profile.findMany({ select: publicSelect })) as PublicRow[];
   if (profiles.length === 0) return [];
 
-  const stats = await statsByUser(profiles.map((p) => p.userId));
+  const stats = await statsByUser(profiles.map((p) => p.userId), perspective);
 
   return profiles
     .map((p) => toSummary(p, stats.get(p.userId) ?? ZERO_STATS))
@@ -191,13 +211,17 @@ async function computeRankBase(metric: RankMetric): Promise<RankEntry[]> {
 // Resolves the viewer's own standing. If they're in the eligible base (found by
 // id), no extra query runs. Otherwise two cheap indexed lookups tell apart "has
 // a profile but < RANK_MIN_MATCHES" from "no public profile yet".
-async function resolveRankViewer(base: RankEntry[], viewerId: string): Promise<RankViewer> {
+async function resolveRankViewer(
+  base: RankEntry[],
+  viewerId: string,
+  perspective: Perspective
+): Promise<RankViewer> {
   const entry = base.find((e) => e.userId === viewerId);
   if (entry) return { status: "ranked", entry };
 
   const [profile, total] = await Promise.all([
     prisma.profile.findUnique({ where: { userId: viewerId }, select: { userId: true } }),
-    prisma.match.count({ where: { userId: viewerId } }),
+    prisma.match.count({ where: { userId: viewerId, perspective } }),
   ]);
   if (!profile) return { status: "noProfile" };
   return { status: "belowThreshold", total, remaining: Math.max(0, RANK_MIN_MATCHES - total) };
@@ -212,16 +236,17 @@ export async function getRankedProfiles(opts: {
   page: number;
   pageSize: number;
   viewerId: string;
+  perspective?: Perspective;
 }): Promise<RankPage> {
-  const { metric, search, page, pageSize, viewerId } = opts;
+  const { metric, search, page, pageSize, viewerId, perspective = "survivor" } = opts;
   try {
     const base = await unstable_cache(
-      () => computeRankBase(metric),
-      ["rank-base", metric],
+      () => computeRankBase(metric, perspective),
+      ["rank-base", metric, perspective],
       { tags: ["community"], revalidate: COMMUNITY_TTL_SECONDS }
     )();
 
-    const me = await resolveRankViewer(base, viewerId);
+    const me = await resolveRankViewer(base, viewerId, perspective);
 
     const q = search.trim().toLowerCase();
     const filtered = q

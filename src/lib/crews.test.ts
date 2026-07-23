@@ -11,6 +11,7 @@ vi.mock("@/lib/prisma", () => ({
 
 const accepted = (userId: string) => ({ userId, status: "accepted" as const });
 const pending = (userId: string) => ({ userId, status: "pending" as const });
+const declined = (userId: string) => ({ userId, status: "declined" as const });
 
 describe("isCrewReady", () => {
   it("is true only when every member accepted", () => {
@@ -20,7 +21,7 @@ describe("isCrewReady", () => {
     expect(isCrewReady([accepted("a"), pending("b")])).toBe(false);
   });
   it("is false with a declined member", () => {
-    expect(isCrewReady([accepted("a"), { userId: "b", status: "declined" }])).toBe(false);
+    expect(isCrewReady([accepted("a"), declined("b")])).toBe(false);
   });
 });
 

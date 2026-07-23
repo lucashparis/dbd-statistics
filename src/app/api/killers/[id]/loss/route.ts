@@ -3,10 +3,10 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getKillerForUser } from "@/lib/killers";
-import { parseId, mutationError } from "@/lib/api";
+import { parseId, parsePerspective, mutationError } from "@/lib/api";
 
 export async function PATCH(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
@@ -22,12 +22,13 @@ export async function PATCH(
 
   try {
     const userId = session.user.id;
+    const perspective = parsePerspective(new URL(req.url).searchParams.get("perspective"));
     await prisma.match.create({
-      data: { userId, killerId, result: "loss", teamId: null },
+      data: { userId, killerId, result: "loss", teamId: null, perspective },
     });
-    revalidateTag(`streaks:${userId}`, "max");
+    if (perspective === "survivor") revalidateTag(`streaks:${userId}`, "max");
     revalidateTag("community", "max");
-    const killer = await getKillerForUser(userId, killerId);
+    const killer = await getKillerForUser(userId, killerId, perspective);
     return NextResponse.json(killer);
   } catch (e) {
     return mutationError("loss route", e);

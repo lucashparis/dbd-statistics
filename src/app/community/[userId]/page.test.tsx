@@ -20,8 +20,8 @@ vi.mock("@/components/organisms/AppHeader", () => ({
   AppHeader: () => <div data-testid="app-header" />,
 }));
 vi.mock("@/components/organisms/PublicProfileView", () => ({
-  PublicProfileView: ({ profile }: { profile: PublicProfileDetail }) => (
-    <div data-testid="profile-view">{profile.nick}</div>
+  PublicProfileView: ({ survivor }: { survivor: PublicProfileDetail }) => (
+    <div data-testid="profile-view">{survivor.nick}</div>
   ),
 }));
 
@@ -40,8 +40,8 @@ const detail: PublicProfileDetail = {
 describe("CommunityProfilePage", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("calls notFound when the profile does not exist", async () => {
-    vi.mocked(getPublicProfile).mockResolvedValueOnce(null);
+  it("calls notFound when the survivor profile does not exist", async () => {
+    vi.mocked(getPublicProfile).mockResolvedValue(null);
     await expect(
       CommunityProfilePage({ params: Promise.resolve({ userId: "ghost" }) })
     ).rejects.toThrow("NEXT_NOT_FOUND");
@@ -49,8 +49,13 @@ describe("CommunityProfilePage", () => {
   });
 
   it("renders the public profile view for an existing profile", async () => {
-    vi.mocked(getPublicProfile).mockResolvedValueOnce(detail);
+    // survivor + killer perspectives are fetched in parallel.
+    vi.mocked(getPublicProfile)
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce({ ...detail, streaks: null });
     render(await CommunityProfilePage({ params: Promise.resolve({ userId: "u1" }) }));
     expect(screen.getByTestId("profile-view")).toHaveTextContent("dead");
+    expect(getPublicProfile).toHaveBeenCalledWith("u1", "survivor");
+    expect(getPublicProfile).toHaveBeenCalledWith("u1", "killer");
   });
 });

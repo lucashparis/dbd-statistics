@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getRankedProfiles } from "@/lib/community";
-import { parsePage } from "@/lib/api";
+import { parsePage, parsePerspective } from "@/lib/api";
 import type { RankPage } from "@/types/profile";
 
 const metricSchema = z.enum(["matches", "wins", "winRate"]).catch("matches");
@@ -17,6 +17,7 @@ export async function GET(req: Request) {
     const sp = new URL(req.url).searchParams;
     const metric = metricSchema.parse(sp.get("metric"));
     const page = parsePage(sp.get("page"));
+    const perspective = parsePerspective(sp.get("perspective"));
     const search = (sp.get("search") ?? "").slice(0, MAX_SEARCH_LENGTH);
     const payload = await getRankedProfiles({
       metric,
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
       page,
       pageSize: RANK_PAGE_SIZE,
       viewerId: userId,
+      perspective,
     });
     return NextResponse.json(payload satisfies RankPage);
   } catch (e) {

@@ -13,6 +13,7 @@ function userRow(password: string) {
     email: "a@b.com",
     name: "A",
     password,
+    preferredMode: "survivor" as const,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

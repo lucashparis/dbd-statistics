@@ -11,12 +11,14 @@ import { KillerSearchInput } from "@/components/molecules/KillerSearchInput";
 import { EmptyState } from "@/components/molecules/EmptyState";
 import { Button } from "@/components/atoms/Button";
 import { RANK_MIN_MATCHES, type RankMetric } from "@/types/profile";
+import type { Perspective } from "@/types/killer";
 
 interface RankTabTemplateProps {
   isActive: boolean;
+  perspective?: Perspective;
 }
 
-export function RankTabTemplate({ isActive }: RankTabTemplateProps) {
+export function RankTabTemplate({ isActive, perspective = "survivor" }: RankTabTemplateProps) {
   const [metric, setMetric] = React.useState<RankMetric>("matches");
   const [searchInput, setSearchInput] = React.useState("");
   const search = useDebouncedValue(searchInput, 300);
@@ -24,7 +26,8 @@ export function RankTabTemplate({ isActive }: RankTabTemplateProps) {
   const { entries, me, hasMore, loading, loadingMore, error, loadMore, retry } = useRank(
     isActive,
     metric,
-    search
+    search,
+    perspective
   );
 
   const hasSearch = search.trim().length > 0;

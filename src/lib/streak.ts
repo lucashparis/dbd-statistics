@@ -133,8 +133,9 @@ export async function getTeamStreaks(userId: string): Promise<TeamStreak[]> {
 // Longest win/loss runs, global and per-killer, derived from the user's matches
 // in chronological order. Shared by /api/stats/streaks and the public profile.
 export async function computeStreaksForUser(userId: string): Promise<StreaksData> {
+  // Streaks are a survivor-only concept — killer matches never contribute.
   const matches = await prisma.match.findMany({
-    where: { userId },
+    where: { userId, perspective: "survivor" },
     orderBy: { createdAt: "asc" },
     select: { killerId: true, result: true },
   });

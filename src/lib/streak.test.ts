@@ -121,7 +121,7 @@ describe("computeStreaksForUser", () => {
     expect(result.global).toEqual({ longestWin: 2, longestLoss: 2 });
     expect(result.perKiller[1]).toEqual({ longestWin: 2, longestLoss: 1 });
     expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "u1" }, orderBy: { createdAt: "asc" } })
+      expect.objectContaining({ where: { userId: "u1", perspective: "survivor" }, orderBy: { createdAt: "asc" } })
     );
   });
 });

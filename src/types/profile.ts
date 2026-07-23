@@ -50,7 +50,8 @@ export interface PublicProfileSummary {
 
 export interface PublicProfileDetail extends PublicProfileSummary {
   killers: KillerStats[];
-  streaks: StreaksData;
+  // Killer perspective has no streaks — null when the detail is killer-scoped.
+  streaks: StreaksData | null;
 }
 
 export interface CommunityPage {

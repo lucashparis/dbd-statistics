@@ -3,10 +3,10 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getKillerForUser } from "@/lib/killers";
-import { parseId } from "@/lib/api";
+import { parseId, parsePerspective } from "@/lib/api";
 
 export async function PATCH(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
@@ -22,20 +22,21 @@ export async function PATCH(
 
   try {
     const userId = session.user.id;
+    const perspective = parsePerspective(new URL(req.url).searchParams.get("perspective"));
 
     // Only quick-log matches (teamId null) can be undone here — streak matches
     // are managed from the Streak tab.
     const lastLoss = await prisma.match.findFirst({
-      where: { userId, killerId, result: "loss", teamId: null },
+      where: { userId, killerId, result: "loss", teamId: null, perspective },
       orderBy: { createdAt: "desc" },
     });
     if (lastLoss) {
       await prisma.match.delete({ where: { id: lastLoss.id } });
-      revalidateTag(`streaks:${userId}`, "max");
+      if (perspective === "survivor") revalidateTag(`streaks:${userId}`, "max");
       revalidateTag("community", "max");
     }
 
-    const killer = await getKillerForUser(userId, killerId);
+    const killer = await getKillerForUser(userId, killerId, perspective);
     if (!killer) {
       return NextResponse.json({ error: "Killer not found" }, { status: 404 });
     }

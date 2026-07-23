@@ -96,6 +96,8 @@ Multi-user schema. Full model in `prisma/schema.prisma`:
 
 > **Note:** `Match.userId` is currently optional (`String?`), a migration artifact. All queries filter by `userId`, so a null-`userId` match is invisible (orphaned). Prefer setting `userId` on every write.
 
+> **ADR (Killer mode — `Match.perspective`).** A `Match` carries a `perspective` (`survivor | killer`, `@default(survivor)`) recording whether the game was played **as survivor** (against a killer — the original app) or **as killer** (playing that killer). This keeps `Match` the single source of truth: every match-derived read (killers grid, history, streaks, community, rank) filters by `perspective`, and the survivor and killer datasets never contaminate each other. **Every derivation helper defaults `perspective` to `"survivor"`** (`getKillersForUser`, `getKillerForUser`, `statsByUser`, `computePublicProfiles`, `computePublicProfile`, `computeRankBase`, `getRankedProfiles`), matching the column default so pre-existing rows and any un-updated caller stay survivor-scoped. **Streaks and crews/teams are survivor-only** — killer matches always have `teamId=null`/`crewMatchId=null`/`streakRunId=null`, and `computeStreaksForUser` filters `perspective: "survivor"`. Killer write routes call `revalidateTag("community")` **but not** `streaks:<id>` (no killer streak). The current UI mode is a client `ModeContext` (`src/contexts/ModeContext.tsx`) seeded from `User.preferredMode` and persisted via `PATCH /api/me/preferences`; the toggle lives in `AppHeader` (via the `headerExtra` slot) and is gated by the `killerModeEnabled` flag. **Client query keys include the perspective** (`queryKeys.killers(p)` etc.) so the two modes' caches don't collide; `invalidateMatchDerived` invalidates by first-segment prefix so it busts both. Killer mode hides the Streak/Team tabs (`AppShell` derives its tab list from `mode`; `page.client` derives an `effectiveTab` rather than resetting state in an effect). Public surfaces (home carousel + `/community/[userId]`) show both perspectives with a client toggle — killer details carry `streaks: null`.
+
 **Seeded with 43 killers and 46 survivors.** Run `npm run db:seed` to repopulate. The seed upserts by `name` and only sets `name`/`imageUrl`. **The killer array is mirrored from the production DB** (personalized names + local `/public/images/killers/*.webp`), so re-seeding is idempotent against the real data — do **not** "normalize" the killer names to English or point them back at wiki URLs (that reopens the incident where a seed run renamed killers and created duplicate rows). Survivor images come from `static.wikia.nocookie.net`. Remote hosts are allowlisted in `next.config.ts`.
 
 ### Useful DB scripts
@@ -113,9 +115,11 @@ npm run db:generate  # regenerate Prisma client after schema changes
 
 Every route below (except NextAuth's own handler and `signup`) requires a session and returns `401` without one. Data is scoped to `session.user.id`.
 
+> **Perspective-aware routes.** The match-derived reads/writes accept a `?perspective=survivor|killer` query param (parsed via `parsePerspective` in `src/lib/api.ts`, defaulting to `survivor` and coercing invalid values rather than 400ing): `GET /api/killers`, the four `killers/[id]/{win,loss}[/undo]` writes, `GET /api/history`, `GET /api/community/profiles`, `GET /api/rank`. See the Killer-mode ADR in the Database section.
+
 | Method | Path | Action |
 |--------|------|--------|
-| GET | `/api/killers` | List killers with the user's derived win/loss counts |
+| GET | `/api/killers` | List killers with the user's derived win/loss counts (accepts `?perspective=survivor\|killer`, default survivor) |
 | GET | `/api/survivors` | List survivors (`id`/`name`/`imageUrl`, ordered by name) — options for the profile form |
 | PATCH | `/api/killers/[id]/win` | Record a win (create a `Match`) |
 | PATCH | `/api/killers/[id]/loss` | Record a loss (create a `Match`) |
@@ -140,6 +144,7 @@ Every route below (except NextAuth's own handler and `signup`) requires a sessio
 | GET | `/api/crews/invitees` | Search invitable public profiles by nick/name (`?q=`, ≥2 chars) |
 | GET | `/api/invites` | Current user's pending crew invites (the avatar bell) |
 | POST | `/api/invites/[id]/respond` | Accept or decline an invite (`{ action }`) |
+| PATCH | `/api/me/preferences` | Persist the current user's play mode (`{ mode: "survivor" \| "killer" }` → `User.preferredMode`) |
 | POST | `/api/signup` | Create an account (public) |
 | GET / POST | `/api/auth/[...nextauth]` | NextAuth handlers |
 
