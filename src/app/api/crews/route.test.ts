@@ -33,14 +33,21 @@ describe("/api/crews", () => {
 
   it("GET returns 401 when unauthenticated", async () => {
     vi.mocked(getSessionUserId).mockResolvedValueOnce(null);
-    expect((await GET()).status).toBe(401);
+    expect((await GET(new Request("http://localhost/api/crews"))).status).toBe(401);
   });
 
   it("GET lists crews", async () => {
     vi.mocked(getCrewsForUser).mockResolvedValueOnce([{ id: 1 }] as never);
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/crews?season=all"));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([{ id: 1 }]);
+    expect(vi.mocked(getCrewsForUser)).toHaveBeenCalledWith("u1", "all");
+  });
+
+  it("GET scopes the crew list to the requested season", async () => {
+    vi.mocked(getCrewsForUser).mockResolvedValueOnce([] as never);
+    await GET(new Request("http://localhost/api/crews?season=0"));
+    expect(vi.mocked(getCrewsForUser)).toHaveBeenCalledWith("u1", 0);
   });
 
   it("POST returns 400 on invalid input", async () => {

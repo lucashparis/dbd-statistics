@@ -34,6 +34,7 @@ function entry(userId: string, rank: number): RankEntry {
 const base = {
   entries: [] as RankEntry[],
   me: null as RankViewer | null,
+  minMatches: 20,
   hasMore: false,
   loading: false,
   loadingMore: false,
@@ -55,6 +56,12 @@ describe("RankTabTemplate", () => {
   it("always shows the 20-matches eligibility rule", () => {
     render(<RankTabTemplate isActive />);
     expect(screen.getByText(/at least 20 matches/i)).toBeInTheDocument();
+  });
+
+  it("shows the seasonal threshold and window when a season is selected", () => {
+    mockHook({ minMatches: 10 });
+    render(<RankTabTemplate isActive season={1} />);
+    expect(screen.getByText(/at least 10 matches in Season 1/i)).toBeInTheDocument();
   });
 
   it("shows the position banner and marks the viewer's own row when ranked", () => {

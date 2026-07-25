@@ -43,4 +43,31 @@ describe("ActionButtons", () => {
     fireEvent.click(screen.getByLabelText("Undo loss"));
     expect(handlers.onUndoLoss).toHaveBeenCalledWith(5);
   });
+
+  const LABELS = ["Register win", "Register loss", "Undo win", "Undo loss"];
+
+  it("disables every action in a read-only season and explains why", () => {
+    render(<ActionButtons killerId={5} {...handlers} readOnly />);
+    for (const label of LABELS) {
+      const button = screen.getByLabelText(label);
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute("title", "Past seasons are read-only");
+    }
+  });
+
+  it("fires no handler while read-only", () => {
+    render(<ActionButtons killerId={5} {...handlers} readOnly />);
+    for (const label of LABELS) fireEvent.click(screen.getByLabelText(label));
+    expect(handlers.onWin).not.toHaveBeenCalled();
+    expect(handlers.onLoss).not.toHaveBeenCalled();
+    expect(handlers.onUndoWin).not.toHaveBeenCalled();
+    expect(handlers.onUndoLoss).not.toHaveBeenCalled();
+  });
+
+  it("leaves the actions enabled and untitled by default", () => {
+    render(<ActionButtons killerId={5} {...handlers} />);
+    const button = screen.getByLabelText("Register win");
+    expect(button).toBeEnabled();
+    expect(button).not.toHaveAttribute("title");
+  });
 });

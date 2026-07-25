@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { computeStats } from "@/lib/utils";
 import { toast } from "sonner";
 import { queryKeys, invalidateMatchDerived } from "@/lib/query-keys";
+import { seasonKey, type SeasonSelection } from "@/lib/seasons";
 import type { Killer, KillerStats, Perspective } from "@/types/killer";
 
 interface UseKillersReturn {
@@ -31,8 +32,11 @@ const ERROR_MESSAGE: Record<KillerAction, string> = {
   "loss/undo": "Failed to undo loss",
 };
 
-async function fetchKillersApi(perspective: Perspective): Promise<KillerStats[]> {
-  const res = await fetch(`/api/killers?perspective=${perspective}`);
+async function fetchKillersApi(
+  perspective: Perspective,
+  season: SeasonSelection
+): Promise<KillerStats[]> {
+  const res = await fetch(`/api/killers?perspective=${perspective}&season=${season}`);
   if (!res.ok) throw new Error("Failed to fetch killers");
   const data: Killer[] = await res.json();
   return data.map(computeStats);
@@ -46,15 +50,20 @@ function applyOptimistic(k: KillerStats, action: KillerAction): KillerStats {
   return computeStats({ ...k, wins, losses });
 }
 
-function useKillerAction(action: KillerAction, perspective: Perspective) {
+function useKillerAction(
+  action: KillerAction,
+  perspective: Perspective,
+  season: SeasonSelection
+) {
   const queryClient = useQueryClient();
-  const key = queryKeys.killers(perspective);
+  const key = queryKeys.killers(perspective, season);
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/killers/${id}/${action}?perspective=${perspective}`, {
-        method: "PATCH",
-      });
+      const res = await fetch(
+        `/api/killers/${id}/${action}?perspective=${perspective}&season=${season}`,
+        { method: "PATCH" }
+      );
       if (!res.ok) throw new Error(ERROR_MESSAGE[action]);
       return (await res.json()) as Killer;
     },
@@ -76,22 +85,27 @@ function useKillerAction(action: KillerAction, perspective: Perspective) {
 
 export function useKillers(
   initialKillers: Killer[],
-  perspective: Perspective = "survivor"
+  perspective: Perspective = "survivor",
+  season: SeasonSelection = "all"
 ): UseKillersReturn {
-  // The server seeds `initialKillers` for the mode the page loaded in. Only seed
-  // that perspective's cache — the other mode must fetch its own data.
+  // The server seeds `initialKillers` for the mode *and* season the page loaded
+  // in. Only seed that exact cache — any other combination must fetch its own
+  // data, or a window would show numbers that belong to a different one.
   const [seedPerspective] = useState(perspective);
+  const [seedSeason] = useState(() => seasonKey(season));
   const query = useQuery({
-    queryKey: queryKeys.killers(perspective),
-    queryFn: () => fetchKillersApi(perspective),
+    queryKey: queryKeys.killers(perspective, season),
+    queryFn: () => fetchKillersApi(perspective, season),
     initialData: () =>
-      perspective === seedPerspective ? initialKillers.map(computeStats) : undefined,
+      perspective === seedPerspective && seasonKey(season) === seedSeason
+        ? initialKillers.map(computeStats)
+        : undefined,
   });
 
-  const winAction = useKillerAction("win", perspective);
-  const lossAction = useKillerAction("loss", perspective);
-  const undoWinAction = useKillerAction("win/undo", perspective);
-  const undoLossAction = useKillerAction("loss/undo", perspective);
+  const winAction = useKillerAction("win", perspective, season);
+  const lossAction = useKillerAction("loss", perspective, season);
+  const undoWinAction = useKillerAction("win/undo", perspective, season);
+  const undoLossAction = useKillerAction("loss/undo", perspective, season);
 
   const pendingId = (m: { isPending: boolean; variables?: number }) =>
     m.isPending ? m.variables ?? null : null;

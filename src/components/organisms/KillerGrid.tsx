@@ -18,6 +18,7 @@ interface KillerGridProps {
   onUndoWin: (id: number) => void;
   onUndoLoss: (id: number) => void;
   onKillerClick?: (killer: KillerStats) => void;
+  readOnly?: boolean;
   className?: string;
 }
 
@@ -45,6 +46,7 @@ export function KillerGrid({
   onUndoWin,
   onUndoLoss,
   onKillerClick,
+  readOnly = false,
   className,
 }: KillerGridProps) {
   if (killers.length === 0) {
@@ -78,6 +80,7 @@ export function KillerGrid({
           onUndoWin={onUndoWin}
           onUndoLoss={onUndoLoss}
           onKillerClick={onKillerClick}
+          readOnly={readOnly}
         />
       ))}
     </div>

@@ -32,7 +32,9 @@ export function useInvites() {
     },
     onSuccess: (vars) => {
       queryClient.setQueryData<Invite[]>(queryKeys.invites, (old) => old?.filter((i) => i.id !== vars.id));
-      queryClient.invalidateQueries({ queryKey: queryKeys.crews });
+      // Prefix invalidation: accepting an invite changes the crew list in every
+      // season window, not just the one currently on screen.
+      queryClient.invalidateQueries({ queryKey: ["crews"] });
       toast.success(vars.action === "accept" ? "Invite accepted" : "Invite declined");
     },
     onError: () => toast.error("Could not answer the invite"),

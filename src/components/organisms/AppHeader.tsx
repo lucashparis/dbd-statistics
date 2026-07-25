@@ -13,7 +13,9 @@ export function AppHeader({ headerExtra }: { headerExtra?: React.ReactNode }) {
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-blood/40 bg-blood/10 glow-blood">
               <Skull size={22} className="text-blood" />
             </div>
-            <div className="min-w-0">
+            {/* Hidden below sm: with the season + mode controls on the right there
+                is no room left, and the wordmark truncated to a single letter. */}
+            <div className="hidden min-w-0 sm:block">
               <h1
                 className="truncate text-lg font-bold uppercase tracking-[0.15em] text-white sm:text-xl"
                 style={{ fontFamily: "var(--font-cinzel), serif" }}

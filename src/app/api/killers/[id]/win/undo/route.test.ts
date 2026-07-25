@@ -23,8 +23,9 @@ const killerRow = {
   updatedAt: new Date(),
 };
 
-function req() {
-  return new Request("http://localhost/api/killers/1/win/undo", { method: "PATCH" });
+function req(season?: string) {
+  const qs = season ? `?season=${season}` : "";
+  return new Request(`http://localhost/api/killers/1/win/undo${qs}`, { method: "PATCH" });
 }
 
 describe("PATCH /api/killers/[id]/win/undo", () => {
@@ -89,5 +90,25 @@ describe("PATCH /api/killers/[id]/win/undo", () => {
     vi.mocked(prisma.match.delete).mockRejectedValueOnce(new Error("db down"));
     const res = await PATCH(req(), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(500);
+  });
+
+  it("rejects an undo aimed at a past season with 409 and deletes nothing", async () => {
+    const res = await PATCH(req("0"), { params: Promise.resolve({ id: "1" }) });
+    expect(res.status).toBe(409);
+    expect(vi.mocked(prisma.match.findFirst)).not.toHaveBeenCalled();
+    expect(vi.mocked(prisma.match.delete)).not.toHaveBeenCalled();
+  });
+
+  it("looks for the last match inside the selected window only", async () => {
+    vi.mocked(prisma.killer.findUnique).mockResolvedValueOnce(killerRow);
+    vi.mocked(prisma.match.findFirst).mockResolvedValueOnce(null);
+    vi.mocked(prisma.match.count).mockResolvedValue(0);
+    await PATCH(req("1"), { params: Promise.resolve({ id: "1" }) });
+    expect(vi.mocked(prisma.match.findFirst).mock.calls[0][0]?.where).toMatchObject({
+      createdAt: {
+        gte: new Date("2026-07-15T03:00:00.000Z"),
+        lt: new Date("2026-10-15T03:00:00.000Z"),
+      },
+    });
   });
 });

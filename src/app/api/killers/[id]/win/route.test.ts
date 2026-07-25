@@ -25,8 +25,9 @@ const killerRow = {
   updatedAt: new Date(),
 };
 
-function req() {
-  return new Request("http://localhost/api/killers/1/win", { method: "PATCH" });
+function req(season?: string) {
+  const qs = season ? `?season=${season}` : "";
+  return new Request(`http://localhost/api/killers/1/win${qs}`, { method: "PATCH" });
 }
 
 describe("PATCH /api/killers/[id]/win", () => {
@@ -74,5 +75,32 @@ describe("PATCH /api/killers/[id]/win", () => {
     vi.mocked(prisma.match.create).mockRejectedValueOnce(new Error("db down"));
     const res = await PATCH(req(), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(500);
+  });
+
+  it("rejects a write aimed at a past season with 409 and writes nothing", async () => {
+    const res = await PATCH(req("0"), { params: Promise.resolve({ id: "1" }) });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "Past seasons are read-only" });
+    expect(vi.mocked(prisma.match.create)).not.toHaveBeenCalled();
+  });
+
+  it("accepts a write while the all-time window is selected", async () => {
+    vi.mocked(prisma.killer.findUnique).mockResolvedValueOnce(killerRow);
+    vi.mocked(prisma.match.count).mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    const res = await PATCH(req("all"), { params: Promise.resolve({ id: "1" }) });
+    expect(res.status).toBe(200);
+    expect(vi.mocked(prisma.match.create)).toHaveBeenCalled();
+  });
+
+  it("projects the response through the selected season window", async () => {
+    vi.mocked(prisma.killer.findUnique).mockResolvedValueOnce(killerRow);
+    vi.mocked(prisma.match.count).mockResolvedValue(2);
+    await PATCH(req("1"), { params: Promise.resolve({ id: "1" }) });
+    expect(vi.mocked(prisma.match.count).mock.calls[0][0]?.where).toMatchObject({
+      createdAt: {
+        gte: new Date("2026-07-15T03:00:00.000Z"),
+        lt: new Date("2026-10-15T03:00:00.000Z"),
+      },
+    });
   });
 });

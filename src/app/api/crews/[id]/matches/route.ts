@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewDetail, isCrewReady } from "@/lib/crews";
 import { decideStreakAction } from "@/lib/streak";
-import { mutationError, parseId } from "@/lib/api";
+import { mutationError, parseId, parseSeason, readOnlySeason } from "@/lib/api";
 
 const schema = z.object({
   killerId: z.number().int(),
@@ -19,6 +19,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const crewId = parseId(id);
   if (!crewId) return NextResponse.json({ error: "Invalid crew ID" }, { status: 400 });
+
+  const season = parseSeason(new URL(req.url).searchParams.get("season"));
+  const blocked = readOnlySeason(season);
+  if (blocked) return blocked;
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
@@ -94,6 +98,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   for (const memberId of acceptedIds) revalidateTag(`streaks:${memberId}`, "max");
   revalidateTag("community", "max");
 
-  const detail = await getCrewDetail(userId, crewId);
+  const detail = await getCrewDetail(userId, crewId, season);
   return NextResponse.json(detail, { status: 201 });
 }

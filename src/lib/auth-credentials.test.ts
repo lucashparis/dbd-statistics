@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
 import bcrypt from "bcryptjs";
 import { verifyCredentials, hashPassword } from "@/lib/auth-credentials";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +14,7 @@ function userRow(password: string) {
     name: "A",
     password,
     preferredMode: "survivor" as const,
+    preferredSeason: "current",
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -48,3 +49,5 @@ describe("verifyCredentials", () => {
     expect(result).toEqual({ id: "u1", email: "a@b.com", name: "A" });
   });
 });
+
+

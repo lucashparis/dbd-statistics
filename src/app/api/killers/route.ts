@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getKillersForUser } from "@/lib/killers";
-import { parsePerspective } from "@/lib/api";
+import { parsePerspective, parseSeason } from "@/lib/api";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -10,8 +10,10 @@ export async function GET(req: Request) {
   }
 
   try {
-    const perspective = parsePerspective(new URL(req.url).searchParams.get("perspective"));
-    const killers = await getKillersForUser(session.user.id, perspective);
+    const sp = new URL(req.url).searchParams;
+    const perspective = parsePerspective(sp.get("perspective"));
+    const season = parseSeason(sp.get("season"));
+    const killers = await getKillersForUser(session.user.id, perspective, season);
     return NextResponse.json(killers);
   } catch {
     return NextResponse.json({ error: "Failed to fetch killers" }, { status: 500 });

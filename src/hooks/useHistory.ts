@@ -2,18 +2,27 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import type { SeasonSelection } from "@/lib/seasons";
 import type { HistoryPage, Perspective } from "@/types/killer";
 
-async function fetchHistoryPage(page: number, perspective: Perspective): Promise<HistoryPage> {
-  const res = await fetch(`/api/history?page=${page}&perspective=${perspective}`);
+async function fetchHistoryPage(
+  page: number,
+  perspective: Perspective,
+  season: SeasonSelection
+): Promise<HistoryPage> {
+  const res = await fetch(`/api/history?page=${page}&perspective=${perspective}&season=${season}`);
   if (!res.ok) throw new Error(`History request failed: ${res.status}`);
   return (await res.json()) as HistoryPage;
 }
 
-export function useHistory(isActive: boolean, perspective: Perspective = "survivor") {
+export function useHistory(
+  isActive: boolean,
+  perspective: Perspective = "survivor",
+  season: SeasonSelection = "all"
+) {
   const query = useInfiniteQuery({
-    queryKey: queryKeys.history(perspective),
-    queryFn: ({ pageParam }) => fetchHistoryPage(pageParam, perspective),
+    queryKey: queryKeys.history(perspective, season),
+    queryFn: ({ pageParam }) => fetchHistoryPage(pageParam, perspective, season),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) =>
       lastPage.hasMore ? allPages.length + 1 : undefined,

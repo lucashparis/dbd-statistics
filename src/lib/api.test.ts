@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { Prisma } from "@prisma/client";
-import { parseId, parsePage, parsePerspective, mutationError } from "./api";
+import { parseId, parsePage, parsePerspective, parseSeason, readOnlySeason, mutationError } from "./api";
+import { currentSeasonId } from "./seasons";
 
 describe("parsePerspective", () => {
   it("accepts the two valid perspectives", () => {
@@ -42,6 +43,42 @@ describe("parsePage", () => {
       expect(parsePage(value as string | null)).toBe(1);
     }
   );
+});
+
+describe("parseSeason", () => {
+  const current = currentSeasonId();
+
+  it("accepts the all-time selection", () => {
+    expect(parseSeason("all")).toBe("all");
+  });
+
+  it("accepts a valid season number", () => {
+    expect(parseSeason("0")).toBe(0);
+    expect(parseSeason(String(current))).toBe(current);
+  });
+
+  it.each(["abc", "-1", "1.5", "", null])(
+    "falls back to the current season for invalid input %j",
+    (value) => {
+      expect(parseSeason(value as string | null)).toBe(current);
+    }
+  );
+
+  it("clamps a future season to the current one", () => {
+    expect(parseSeason("999")).toBe(current);
+  });
+});
+
+describe("readOnlySeason", () => {
+  it("allows writes on the current season and on all time", () => {
+    expect(readOnlySeason(currentSeasonId())).toBeNull();
+    expect(readOnlySeason("all")).toBeNull();
+  });
+
+  it("rejects writes on a past season with 409", () => {
+    const response = readOnlySeason(0);
+    expect(response?.status).toBe(409);
+  });
 });
 
 describe("mutationError", () => {

@@ -12,10 +12,12 @@ export default async function HomePage() {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
 
+  // The carousel is a shop window for logged-out visitors, so it stays all-time:
+  // right after a season rolls over every card would otherwise read zero.
   const [profiles, killerProfiles] = await Promise.all([
-    getPublicProfiles({ limit: 12, perspective: "survivor" }),
+    getPublicProfiles({ limit: 12, perspective: "survivor", season: "all" }),
     killerModeEnabled
-      ? getPublicProfiles({ limit: 12, perspective: "killer" })
+      ? getPublicProfiles({ limit: 12, perspective: "killer", season: "all" })
       : Promise.resolve(null),
   ]);
 

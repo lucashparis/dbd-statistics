@@ -3,11 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys, invalidateMatchDerived } from "@/lib/query-keys";
+import type { SeasonSelection } from "@/lib/seasons";
 import type { Crew, CrewWritePolicy } from "@/types/crew";
 import type { MatchResult } from "@/types/killer";
 
-async function fetchCrews(): Promise<Crew[]> {
-  const res = await fetch("/api/crews");
+async function fetchCrews(season: SeasonSelection): Promise<Crew[]> {
+  const res = await fetch(`/api/crews?season=${season}`);
   if (!res.ok) throw new Error("Failed to load crews");
   return (await res.json()) as Crew[];
 }
@@ -25,21 +26,22 @@ interface CreateVars {
   writePolicy: CrewWritePolicy;
 }
 
-export function useCrews(isActive: boolean) {
+export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
   const queryClient = useQueryClient();
+  const key = queryKeys.crews(season);
 
   const query = useQuery({
-    queryKey: queryKeys.crews,
-    queryFn: fetchCrews,
+    queryKey: key,
+    queryFn: () => fetchCrews(season),
     enabled: isActive,
   });
 
   const setCrew = (crew: Crew) =>
-    queryClient.setQueryData<Crew[]>(queryKeys.crews, (old) => upsert(old, crew));
+    queryClient.setQueryData<Crew[]>(key, (old) => upsert(old, crew));
 
   const createMutation = useMutation({
     mutationFn: async (vars: CreateVars) => {
-      const res = await fetch("/api/crews", {
+      const res = await fetch(`/api/crews?season=${season}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(vars),
@@ -63,18 +65,19 @@ export function useCrews(isActive: boolean) {
       return id;
     },
     onSuccess: (id) =>
-      queryClient.setQueryData<Crew[]>(queryKeys.crews, (old) => old?.filter((c) => c.id !== id)),
+      queryClient.setQueryData<Crew[]>(key, (old) => old?.filter((c) => c.id !== id)),
     onError: () => toast.error("Could not delete crew"),
   });
 
   const logMutation = useMutation({
     mutationFn: async (vars: { crewId: number; killerId: number; result: MatchResult }) => {
-      const res = await fetch(`/api/crews/${vars.crewId}/matches`, {
+      const res = await fetch(`/api/crews/${vars.crewId}/matches?season=${season}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ killerId: vars.killerId, result: vars.result }),
       });
       if (res.status === 403) throw new Error("You are not allowed to log for this crew yet");
+      if (res.status === 409) throw new Error("Past seasons are read-only");
       if (!res.ok) throw new Error("Could not log the match");
       return (await res.json()) as Crew;
     },
@@ -88,7 +91,11 @@ export function useCrews(isActive: boolean) {
 
   const deleteMatchMutation = useMutation({
     mutationFn: async (vars: { crewId: number; matchId: number }) => {
-      const res = await fetch(`/api/crews/${vars.crewId}/matches/${vars.matchId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/crews/${vars.crewId}/matches/${vars.matchId}?season=${season}`,
+        { method: "DELETE" }
+      );
+      if (res.status === 409) throw new Error("Past seasons are read-only");
       if (!res.ok) throw new Error("Could not remove the match");
       return (await res.json()) as Crew;
     },
@@ -97,12 +104,12 @@ export function useCrews(isActive: boolean) {
       toast.success("Match removed");
       invalidateMatchDerived(queryClient);
     },
-    onError: () => toast.error("Could not remove the match"),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not remove the match"),
   });
 
   const policyMutation = useMutation({
     mutationFn: async (vars: { crewId: number; writePolicy: CrewWritePolicy }) => {
-      const res = await fetch(`/api/crews/${vars.crewId}`, {
+      const res = await fetch(`/api/crews/${vars.crewId}?season=${season}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ writePolicy: vars.writePolicy }),
@@ -116,7 +123,10 @@ export function useCrews(isActive: boolean) {
 
   const removeMemberMutation = useMutation({
     mutationFn: async (vars: { crewId: number; userId: string }) => {
-      const res = await fetch(`/api/crews/${vars.crewId}/members/${vars.userId}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/crews/${vars.crewId}/members/${vars.userId}?season=${season}`,
+        { method: "DELETE" }
+      );
       if (!res.ok) throw new Error("Could not remove the member");
       return (await res.json()) as Crew;
     },

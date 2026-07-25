@@ -5,6 +5,9 @@ import {
   recomputeStreakRuns,
   computeStreaksForUser,
   getStreaksForUser,
+  runsForWindow,
+  currentStreakOf,
+  bestStreakOf,
 } from "@/lib/streak";
 import type { MatchResult } from "@/types/killer";
 import { prisma } from "@/lib/prisma";
@@ -123,6 +126,68 @@ describe("computeStreaksForUser", () => {
     expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "u1", perspective: "survivor" }, orderBy: { createdAt: "asc" } })
     );
+  });
+});
+
+describe("computeStreaksForUser season scoping", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("adds no date filter for the all-time selection", async () => {
+    vi.mocked(prisma.match.findMany).mockResolvedValueOnce([]);
+    await computeStreaksForUser("u1", "all");
+    const where = vi.mocked(prisma.match.findMany).mock.calls[0][0]?.where as {
+      createdAt?: unknown;
+    };
+    expect(where.createdAt).toBeUndefined();
+  });
+
+  it("narrows the query to the season window", async () => {
+    vi.mocked(prisma.match.findMany).mockResolvedValueOnce([]);
+    await computeStreaksForUser("u1", 1);
+    const where = vi.mocked(prisma.match.findMany).mock.calls[0][0]?.where as {
+      createdAt?: { gte?: Date; lt?: Date };
+    };
+    expect(where.createdAt).toEqual({
+      gte: new Date("2026-07-15T03:00:00.000Z"),
+      lt: new Date("2026-10-15T03:00:00.000Z"),
+    });
+  });
+});
+
+describe("runsForWindow", () => {
+  const persisted = [{ winCount: 9, status: "ended" as const }];
+  // Newest-first, as Prisma returns it: chronologically win, win, loss.
+  const newestFirst = [
+    { id: 3, result: "loss" as const, createdAt: new Date("2026-08-03T00:00:00Z") },
+    { id: 2, result: "win" as const, createdAt: new Date("2026-08-02T00:00:00Z") },
+    { id: 1, result: "win" as const, createdAt: new Date("2026-08-01T00:00:00Z") },
+  ];
+
+  it("returns the persisted runs untouched for all time", () => {
+    expect(runsForWindow(newestFirst, persisted, "all")).toBe(persisted);
+  });
+
+  it("rebuilds the runs chronologically for a season window", () => {
+    const runs = runsForWindow(newestFirst, persisted, 1);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ winCount: 2, status: "ended" });
+  });
+
+  it("returns no runs when the window is empty", () => {
+    expect(runsForWindow([], persisted, 1)).toEqual([]);
+  });
+});
+
+describe("currentStreakOf / bestStreakOf", () => {
+  it("reads the active run, or zero when every run is closed", () => {
+    expect(currentStreakOf([{ winCount: 4, status: "ended" }, { winCount: 2, status: "active" }])).toBe(2);
+    expect(currentStreakOf([{ winCount: 4, status: "ended" }])).toBe(0);
+    expect(currentStreakOf([])).toBe(0);
+  });
+
+  it("takes the longest run, or zero with no runs", () => {
+    expect(bestStreakOf([{ winCount: 4 }, { winCount: 7 }])).toBe(7);
+    expect(bestStreakOf([])).toBe(0);
   });
 });
 

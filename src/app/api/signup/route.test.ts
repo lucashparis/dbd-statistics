@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/signup/route";
 import { prisma } from "@/lib/prisma";
 
@@ -21,6 +21,7 @@ function userRow(overrides: Partial<{ id: string; email: string }> = {}) {
     name: null,
     password: "hashed",
     preferredMode: "survivor" as const,
+    preferredSeason: "current",
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -54,3 +55,5 @@ describe("POST /api/signup", () => {
     expect(createArg.data.password.length).toBeGreaterThan(20);
   });
 });
+
+

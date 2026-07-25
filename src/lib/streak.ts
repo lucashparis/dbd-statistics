@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { serializeTeam } from "@/lib/teams";
 import { computeStreaks } from "@/lib/utils";
+import { seasonKey, seasonWhere, type SeasonSelection } from "@/lib/seasons";
 import type { MatchResult, StreaksData } from "@/types/killer";
 import type { TeamStreak } from "@/types/team";
 
@@ -59,16 +60,32 @@ export function recomputeStreakRuns(
   return runs;
 }
 
+// A window's runs are rebuilt from the matches inside it: the persisted run
+// counters span the whole history, so they cannot answer "how did this streak
+// look during season N". `matches` arrives newest-first, and
+// `recomputeStreakRuns` walks chronologically — hence the reverse.
+export function runsForWindow<T extends { id: number; result: MatchResult; createdAt: Date }>(
+  matches: T[],
+  persisted: { winCount: number; status: "active" | "ended" }[],
+  season: SeasonSelection
+): { winCount: number; status: "active" | "ended" }[] {
+  if (season === "all") return persisted;
+  return recomputeStreakRuns([...matches].reverse());
+}
+
+export function currentStreakOf(runs: { winCount: number; status: "active" | "ended" }[]): number {
+  return runs.find((r) => r.status === "active")?.winCount ?? 0;
+}
+
+export function bestStreakOf(runs: { winCount: number }[]): number {
+  return runs.reduce((max, r) => Math.max(max, r.winCount), 0);
+}
+
 interface TeamRow {
   id: number;
   name: string;
   createdAt: Date;
   members: { player: { id: number; name: string; nick: string } }[];
-}
-interface RunRow {
-  teamId: number;
-  winCount: number;
-  status: "active" | "ended";
 }
 interface MatchRow {
   id: number;
@@ -78,16 +95,20 @@ interface MatchRow {
   killer: { id: number; name: string; imageUrl: string };
 }
 
-function buildTeamStreak(team: TeamRow, runs: RunRow[], matches: MatchRow[]): TeamStreak {
-  const activeRun = runs.find((r) => r.status === "active");
-  const bestStreak = runs.reduce((max, r) => Math.max(max, r.winCount), 0);
+function buildTeamStreak(
+  team: TeamRow,
+  runs: { winCount: number; status: "active" | "ended" }[],
+  matches: MatchRow[]
+): TeamStreak {
+  const currentStreak = currentStreakOf(runs);
+  const bestStreak = bestStreakOf(runs);
   const wins = matches.filter((m) => m.result === "win").length;
   const losses = matches.filter((m) => m.result === "loss").length;
   const totalMatches = matches.length;
 
   return {
     team: serializeTeam(team),
-    currentStreak: activeRun?.winCount ?? 0,
+    currentStreak,
     bestStreak,
     totalMatches,
     wins,
@@ -107,7 +128,10 @@ const matchInclude = {
   include: { killer: { select: { id: true, name: true, imageUrl: true } } },
 } as const;
 
-export async function getTeamStreaks(userId: string): Promise<TeamStreak[]> {
+export async function getTeamStreaks(
+  userId: string,
+  season: SeasonSelection = "all"
+): Promise<TeamStreak[]> {
   const teams = await prisma.team.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },
@@ -118,24 +142,28 @@ export async function getTeamStreaks(userId: string): Promise<TeamStreak[]> {
   const teamIds = teams.map((t) => t.id);
   const [runs, matches] = await Promise.all([
     prisma.streakRun.findMany({ where: { userId, teamId: { in: teamIds } } }),
-    prisma.match.findMany({ where: { userId, teamId: { in: teamIds } }, ...matchInclude }),
+    prisma.match.findMany({
+      where: { userId, teamId: { in: teamIds }, ...seasonWhere(season) },
+      ...matchInclude,
+    }),
   ]);
 
-  return teams.map((team) =>
-    buildTeamStreak(
-      team,
-      runs.filter((r) => r.teamId === team.id),
-      matches.filter((m) => m.teamId === team.id)
-    )
-  );
+  return teams.map((team) => {
+    const teamMatches = matches.filter((m) => m.teamId === team.id);
+    const persisted = runs.filter((r) => r.teamId === team.id);
+    return buildTeamStreak(team, runsForWindow(teamMatches, persisted, season), teamMatches);
+  });
 }
 
 // Longest win/loss runs, global and per-killer, derived from the user's matches
 // in chronological order. Shared by /api/stats/streaks and the public profile.
-export async function computeStreaksForUser(userId: string): Promise<StreaksData> {
+export async function computeStreaksForUser(
+  userId: string,
+  season: SeasonSelection = "all"
+): Promise<StreaksData> {
   // Streaks are a survivor-only concept — killer matches never contribute.
   const matches = await prisma.match.findMany({
-    where: { userId, perspective: "survivor" },
+    where: { userId, perspective: "survivor", ...seasonWhere(season) },
     orderBy: { createdAt: "asc" },
     select: { killerId: true, result: true },
   });
@@ -162,15 +190,22 @@ export async function computeStreaksForUser(userId: string): Promise<StreaksData
 // it; `revalidate` is a time-based safety net if a tag call is ever missed.
 const STREAKS_TTL_SECONDS = 60;
 
-export function getStreaksForUser(userId: string): Promise<StreaksData> {
+export function getStreaksForUser(
+  userId: string,
+  season: SeasonSelection = "all"
+): Promise<StreaksData> {
   return unstable_cache(
-    () => computeStreaksForUser(userId),
-    ["streaks", userId],
+    () => computeStreaksForUser(userId, season),
+    ["streaks", userId, seasonKey(season)],
     { tags: [`streaks:${userId}`], revalidate: STREAKS_TTL_SECONDS }
   )();
 }
 
-export async function getTeamStreak(userId: string, teamId: number): Promise<TeamStreak | null> {
+export async function getTeamStreak(
+  userId: string,
+  teamId: number,
+  season: SeasonSelection = "all"
+): Promise<TeamStreak | null> {
   const team = await prisma.team.findFirst({
     where: { id: teamId, userId },
     include: { members: { include: { player: true } } },
@@ -179,8 +214,8 @@ export async function getTeamStreak(userId: string, teamId: number): Promise<Tea
 
   const [runs, matches] = await Promise.all([
     prisma.streakRun.findMany({ where: { userId, teamId } }),
-    prisma.match.findMany({ where: { userId, teamId }, ...matchInclude }),
+    prisma.match.findMany({ where: { userId, teamId, ...seasonWhere(season) }, ...matchInclude }),
   ]);
 
-  return buildTeamStreak(team, runs, matches);
+  return buildTeamStreak(team, runsForWindow(matches, runs, season), matches);
 }

@@ -37,6 +37,12 @@ function reqRaw(query: string) {
   return new Request(`http://localhost/api/history?page=${query}`);
 }
 
+function reqSeason(season: string, perspective = "survivor") {
+  return new Request(
+    `http://localhost/api/history?perspective=${perspective}&season=${season}`
+  );
+}
+
 describe("GET /api/history", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,7 +67,7 @@ describe("GET /api/history", () => {
   it("scopes the query to the current user", async () => {
     vi.mocked(prisma.match.findMany).mockResolvedValueOnce([matchFixture]);
     vi.mocked(prisma.match.count).mockResolvedValueOnce(1);
-    await GET(req());
+    await GET(reqSeason("all"));
     expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "u1", perspective: "survivor" } })
     );
@@ -70,10 +76,26 @@ describe("GET /api/history", () => {
     });
   });
 
+  it("applies the same season window to the page and the count", async () => {
+    vi.mocked(prisma.match.findMany).mockResolvedValueOnce([matchFixture]);
+    vi.mocked(prisma.match.count).mockResolvedValueOnce(1);
+    await GET(reqSeason("0"));
+
+    const listWhere = vi.mocked(prisma.match.findMany).mock.calls[0][0]?.where;
+    const countWhere = vi.mocked(prisma.match.count).mock.calls[0][0]?.where;
+    // A count over a different window would make `hasMore` request empty pages.
+    expect(countWhere).toEqual(listWhere);
+    expect(listWhere).toEqual({
+      userId: "u1",
+      perspective: "survivor",
+      createdAt: { lt: new Date("2026-07-15T03:00:00.000Z") },
+    });
+  });
+
   it("scopes the query to the killer perspective when requested", async () => {
     vi.mocked(prisma.match.findMany).mockResolvedValueOnce([matchFixture]);
     vi.mocked(prisma.match.count).mockResolvedValueOnce(1);
-    await GET(new Request("http://localhost/api/history?perspective=killer"));
+    await GET(reqSeason("all", "killer"));
     expect(vi.mocked(prisma.match.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "u1", perspective: "killer" } })
     );

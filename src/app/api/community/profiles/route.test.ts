@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "@/app/api/community/profiles/route";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getPublicProfiles } from "@/lib/community";
+import { currentSeasonId } from "@/lib/seasons";
 import type { PublicProfileSummary } from "@/types/profile";
 
 vi.mock("@/lib/auth-helpers", () => ({ getSessionUserId: vi.fn() }));
@@ -45,7 +46,17 @@ describe("GET /api/community/profiles", () => {
     const body = await res.json();
     expect(body.profiles).toHaveLength(12);
     expect(body.hasMore).toBe(true);
-    expect(vi.mocked(getPublicProfiles)).toHaveBeenCalledWith({ limit: 13, perspective: "survivor" });
+    expect(vi.mocked(getPublicProfiles)).toHaveBeenCalledWith({
+      limit: 13,
+      perspective: "survivor",
+      season: currentSeasonId(),
+    });
+  });
+
+  it("forwards the requested season to the lib", async () => {
+    vi.mocked(getPublicProfiles).mockResolvedValueOnce([]);
+    await GET(new Request("http://localhost/api/community/profiles?page=1&season=0"));
+    expect(vi.mocked(getPublicProfiles).mock.calls[0][0].season).toBe(0);
   });
 
   it("reports hasMore=false on the last page", async () => {

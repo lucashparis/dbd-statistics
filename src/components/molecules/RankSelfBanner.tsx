@@ -5,6 +5,8 @@ import { RANK_MIN_MATCHES, type RankEntry, type RankMetric, type RankViewer } fr
 interface RankSelfBannerProps {
   me: RankViewer | null;
   metric: RankMetric;
+  // Threshold of the active window — seasons use a lower bar than all time.
+  minMatches?: number;
   className?: string;
 }
 
@@ -24,7 +26,12 @@ function Hint({ children, className }: { children: React.ReactNode; className?: 
   return <div className={cn("card-dark p-4 text-sm text-muted", className)}>{children}</div>;
 }
 
-export function RankSelfBanner({ me, metric, className }: RankSelfBannerProps) {
+export function RankSelfBanner({
+  me,
+  metric,
+  minMatches = RANK_MIN_MATCHES,
+  className,
+}: RankSelfBannerProps) {
   if (!me) return null;
 
   if (me.status === "noProfile") {
@@ -39,7 +46,7 @@ export function RankSelfBanner({ me, metric, className }: RankSelfBannerProps) {
     return (
       <Hint className={className}>
         You&apos;re not on the rank yet — {me.remaining} more{" "}
-        {me.remaining === 1 ? "match" : "matches"} to qualify ({me.total}/{RANK_MIN_MATCHES} played).
+        {me.remaining === 1 ? "match" : "matches"} to qualify ({me.total}/{minMatches} played).
       </Hint>
     );
   }

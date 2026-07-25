@@ -4,6 +4,14 @@ import type { Survivor } from "@/types/survivor";
 // Minimum matches a public profile needs to appear in the community rank.
 export const RANK_MIN_MATCHES = 20;
 
+// Season-scoped ranks use a lower bar: a fresh season would otherwise sit empty
+// for days before anyone reaches the all-time threshold inside the window.
+export const SEASON_RANK_MIN_MATCHES = 10;
+
+export function rankThreshold(season: "all" | number): number {
+  return season === "all" ? RANK_MIN_MATCHES : SEASON_RANK_MIN_MATCHES;
+}
+
 export interface KillerRef {
   id: number;
   name: string;
@@ -81,4 +89,7 @@ export interface RankPage {
   entries: RankEntry[];
   hasMore: boolean;
   me: RankViewer | null;
+  // Threshold that produced this page — depends on the season window, so the
+  // client copy must read it from here instead of hardcoding a constant.
+  minMatches: number;
 }

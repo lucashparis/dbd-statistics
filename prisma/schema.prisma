@@ -40,6 +40,10 @@ model User {
   name          String?
   password      String
   preferredMode Perspective @default(survivor)
+  // Season intent, not a season id: "current" | "all" | "<n>". Storing the
+  // intent means a preference saved during one season still opens the *new*
+  // current season after a rollover instead of pinning a finished one.
+  preferredSeason String    @default("current")
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   players   Player[]
@@ -153,6 +157,8 @@ model Match {
   @@index([createdAt])
   @@index([userId, perspective])
   @@index([killerId, perspective])
+  // Season-scoped reads all filter on this triple (grid, history, community).
+  @@index([userId, perspective, createdAt])
 }
 
 model StreakRun {

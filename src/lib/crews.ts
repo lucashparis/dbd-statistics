@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { bestStreakOf, currentStreakOf, runsForWindow } from "@/lib/streak";
+import { seasonWhere, type SeasonSelection } from "@/lib/seasons";
 import type { MatchResult } from "@/types/killer";
 import type {
   Crew,
@@ -29,11 +31,15 @@ const matchInclude = {
   },
 } as const;
 
-const crewInclude = {
-  members: memberInclude,
-  streaks: true,
-  matches: matchInclude,
-} as const;
+// A season narrows which CrewMatch rows are loaded; members and the write gate
+// are never season-scoped. `all` keeps the query identical to the pre-seasons one.
+function crewInclude(season: SeasonSelection) {
+  return {
+    members: memberInclude,
+    streaks: true,
+    matches: { ...matchInclude, where: seasonWhere(season) },
+  } as const;
+}
 
 interface MemberRow {
   userId: string;
@@ -98,9 +104,11 @@ export function canWrite(
   return writePolicy === "allMembers" || viewerId === ownerId;
 }
 
-function serializeCrew(crew: CrewRow, viewerId: string): Crew {
-  const activeRun = crew.streaks.find((r) => r.status === "active");
-  const bestStreak = crew.streaks.reduce((max, r) => Math.max(max, r.winCount), 0);
+function serializeCrew(crew: CrewRow, viewerId: string, season: SeasonSelection): Crew {
+  // All time reads the persisted runs (the write path's source of truth); a
+  // season window rebuilds them from the matches inside it, so a run that opened
+  // before the rollover shows only the wins that fall in the window.
+  const runs = runsForWindow(crew.matches, crew.streaks, season);
   const wins = crew.matches.filter((m) => m.result === "win").length;
   const losses = crew.matches.filter((m) => m.result === "loss").length;
   const total = crew.matches.length;
@@ -126,8 +134,8 @@ function serializeCrew(crew: CrewRow, viewerId: string): Crew {
     isReady: isCrewReady(crew.members),
     canWrite: canWrite(crew.members, crew.writePolicy, crew.ownerId, viewerId),
     members: crew.members.map(toMemberView),
-    currentStreak: activeRun?.winCount ?? 0,
-    bestStreak,
+    currentStreak: currentStreakOf(runs),
+    bestStreak: bestStreakOf(runs),
     totalMatches: total,
     wins,
     losses,
@@ -136,7 +144,10 @@ function serializeCrew(crew: CrewRow, viewerId: string): Crew {
   };
 }
 
-export async function getCrewsForUser(viewerId: string): Promise<Crew[]> {
+export async function getCrewsForUser(
+  viewerId: string,
+  season: SeasonSelection = "all"
+): Promise<Crew[]> {
   const memberships = await prisma.crewMember.findMany({
     where: { userId: viewerId, status: "accepted" },
     select: { crewId: true },
@@ -147,23 +158,27 @@ export async function getCrewsForUser(viewerId: string): Promise<Crew[]> {
   const crews = (await prisma.crew.findMany({
     where: { id: { in: crewIds } },
     orderBy: { createdAt: "asc" },
-    include: crewInclude,
+    include: crewInclude(season),
   })) as unknown as CrewRow[];
 
-  return crews.map((c) => serializeCrew(c, viewerId));
+  return crews.map((c) => serializeCrew(c, viewerId, season));
 }
 
-export async function getCrewDetail(viewerId: string, crewId: number): Promise<Crew | null> {
+export async function getCrewDetail(
+  viewerId: string,
+  crewId: number,
+  season: SeasonSelection = "all"
+): Promise<Crew | null> {
   const crew = (await prisma.crew.findUnique({
     where: { id: crewId },
-    include: crewInclude,
+    include: crewInclude(season),
   })) as unknown as CrewRow | null;
   if (!crew) return null;
 
   const membership = crew.members.find((m) => m.userId === viewerId);
   if (!membership || membership.status !== "accepted") return null;
 
-  return serializeCrew(crew, viewerId);
+  return serializeCrew(crew, viewerId, season);
 }
 
 export async function getInvitesForUser(userId: string): Promise<Invite[]> {

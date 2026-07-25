@@ -3,16 +3,25 @@
 import * as React from "react";
 import { MatchHistoryList } from "@/components/organisms/MatchHistoryList";
 import { useHistory } from "@/hooks/useHistory";
+import { seasonLabel, type SeasonSelection } from "@/lib/seasons";
 import type { Perspective } from "@/types/killer";
 
 interface HistoryTabTemplateProps {
   isActive: boolean;
   perspective?: Perspective;
+  season?: SeasonSelection;
 }
 
-export function HistoryTabTemplate({ isActive, perspective = "survivor" }: HistoryTabTemplateProps) {
-  const { matches, hasMore, loading, loadingMore, error, loadMore, retry } =
-    useHistory(isActive, perspective);
+export function HistoryTabTemplate({
+  isActive,
+  perspective = "survivor",
+  season = "all",
+}: HistoryTabTemplateProps) {
+  const { matches, hasMore, loading, loadingMore, error, loadMore, retry } = useHistory(
+    isActive,
+    perspective,
+    season
+  );
 
   return (
     <div className="space-y-6">
@@ -24,7 +33,9 @@ export function HistoryTabTemplate({ isActive, perspective = "survivor" }: Histo
           Match History
         </h2>
         <p className="mt-1 text-sm text-muted">
-          All your recorded matches, from most recent to oldest.
+          {season === "all"
+            ? "All your recorded matches, from most recent to oldest."
+            : `${seasonLabel(season)} — from most recent to oldest.`}
         </p>
       </div>
 

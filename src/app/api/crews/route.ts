@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewsForUser, getCrewDetail, resolveInvitees } from "@/lib/crews";
-import { mutationError } from "@/lib/api";
+import { mutationError, parseSeason } from "@/lib/api";
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(60),
@@ -12,11 +12,12 @@ const createSchema = z.object({
   writePolicy: z.enum(["hostOnly", "allMembers"]).default("allMembers"),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const crews = await getCrewsForUser(userId);
+  const season = parseSeason(new URL(req.url).searchParams.get("season"));
+  const crews = await getCrewsForUser(userId, season);
   return NextResponse.json(crews);
 }
 
@@ -51,7 +52,8 @@ export async function POST(req: Request) {
       },
     });
 
-    const detail = await getCrewDetail(userId, crew.id);
+    const season = parseSeason(new URL(req.url).searchParams.get("season"));
+    const detail = await getCrewDetail(userId, crew.id, season);
     return NextResponse.json(detail, { status: 201 });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {

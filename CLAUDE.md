@@ -53,7 +53,7 @@ All server-state hooks are built on **TanStack Query v5** (`@tanstack/react-quer
 - `useInviteeSearch` — debounced-by-input search over invitable public profiles (`['invitees', q]`, enabled at ≥2 chars).
 - `useAutocomplete<T extends AutocompleteItem>` — generic search autocomplete with keyboard nav (↑↓ Enter Escape) and click-outside dismissal. Pure client state — not a server-state hook. Works with any `{ id, name, imageUrl }` item; rendered by the generic `EntityAutocomplete` organism (used for both killers and survivors).
 
-**Cache invalidation:** any `Match`-writing mutation (killer win/loss/undo, team-streak launch/delete) calls `invalidateMatchDerived(queryClient)` → invalidates `killers` + `history` + `streaks` + `community` + `rank` (all derive from `Match`, filtered only by `userId` — the community/rank aggregate stats included). Roster mutations update their own list cache via `setQueryData`.
+**Cache invalidation:** any `Match`-writing mutation (killer win/loss/undo, crew/team-streak log/delete) calls `invalidateMatchDerived(queryClient)` → invalidates `killers` + `history` + `streaks` + `community` + `rank` + `crews` by **first-segment prefix**, which busts every perspective *and* season variant at once. Roster mutations update their own list cache via `setQueryData`.
 
 **Testing hooks:** wrap `renderHook` with `createQueryWrapper()` from `src/test/queryWrapper.tsx` (fresh client per test, retries off, `staleTime: Infinity` so `initialData` queries don't auto-refetch).
 
@@ -67,7 +67,8 @@ All server-state hooks are built on **TanStack Query v5** (`@tanstack/react-quer
 - `security-headers.ts` — `securityHeaders()` / `contentSecurityPolicy(isDev)`. Consumed by `next.config.ts` `headers()`.
 - `streak.ts` / `teams.ts` — streak computation and legacy team helpers. `decideStreakAction`/`recomputeStreakRuns` are pure and reused by the crew routes.
 - `crews.ts` — collaborative crew domain: `getCrewsForUser`/`getCrewDetail`/`getInvitesForUser` (whitelisted projections, never `email`), `resolveInvitees` (public-profile check), and the pure `isCrewReady`/`canWrite` write gate.
-- `flags.ts` — `crewsEnabled` (reads `NEXT_PUBLIC_CREWS_ENABLED`; default on).
+- `seasons.ts` — the season domain (pure, no I/O): boundaries, current id, listing, `seasonWhere` Prisma fragment, `seasonKey` cache fragment, and `resolvePreferredSeason`/`toPreference` for the stored intent. See the Seasons ADR.
+- `flags.ts` — `crewsEnabled` (reads `NEXT_PUBLIC_CREWS_ENABLED`; default on), `killerModeEnabled`, `seasonsEnabled` (`NEXT_PUBLIC_SEASONS_ENABLED`; default on — off makes every read resolve to all time and hides the selector).
 - `auth-credentials.ts` / `auth-helpers.ts` — credential validation and auth utilities.
 
 ---
@@ -76,7 +77,7 @@ All server-state hooks are built on **TanStack Query v5** (`@tanstack/react-quer
 
 Multi-user schema. Full model in `prisma/schema.prisma`:
 
-- `User` — account (email unique, bcrypt `password`). Owns players, teams, matches, streaks.
+- `User` — account (email unique, bcrypt `password`). Owns players, teams, matches, streaks. `preferredMode` holds the play perspective; `preferredSeason` holds the **season intent** (`"current" | "all" | "<n>"`, default `"current"`) — storing the intent instead of an id means a preference saved in one season opens the *new* current season after a rollover instead of pinning a finished one.
 - `Killer` — the roster. **No `wins`/`losses` columns** — counts are derived from `Match`.
 - `Survivor` — the survivor roster (reference table, `name` unique + `imageUrl`). Mirrors `Killer` but is **not** tied to `Match`. Seeded from the DBD wiki; referenced by `Profile.mainSurvId` (surfaced in the profile form as "Main survivor").
 - `Player` — a named player/nick owned by a user (`@@unique([userId, nick])`). **Legacy** (single-user teams) — see the crew note below.
@@ -93,6 +94,10 @@ Multi-user schema. Full model in `prisma/schema.prisma`:
 > **ADR (resolves audit M17): `Match` is the single source of truth.** `Killer` deliberately has **no** denormalized `wins`/`losses`. Any aggregate (grid, pie chart, history, streaks) must derive from `Match` via `getKillersForUser`/`getKillerForUser` in `src/lib/killers.ts`. Do **not** re-introduce counter columns — that reopens the drift bug this design eliminated.
 
 > **ADR (collaborative crews — fan-out).** A crew match is logged **once** as a `CrewMatch` (the source of truth for the shared streak) and **fanned out** to one personal `Match` per accepted member (`crewMatchId` set) so it also feeds each member's killer grid/rank/community stats. Compute the shared streak from `CrewMatch`/`CrewStreakRun` **only** — never from the `Match` projections (they count N× per event). Deleting a `CrewMatch` cascade-deletes its projections (`Match.crewMatch onDelete: Cascade`) and recomputes the crew runs. A crew write (log/delete) must `revalidateTag("streaks:" + memberId, "max")` for **every** accepted member (not just the logger) plus `revalidateTag("community", "max")`. **Who may log/delete** is the single `Crew.writePolicy` gate via `canWrite()` in `src/lib/crews.ts` (owner always; other members only when `allMembers`), and only once the crew is ready. Legacy `Player`/`Team`/`TeamPlayer`/`StreakRun` rows are retained in the DB but no longer surfaced on the front (toggle via `NEXT_PUBLIC_CREWS_ENABLED`).
+
+> **ADR (Seasons — derived from `createdAt`).** A **season** is a 3-month window over `Match.createdAt` / `CrewMatch.createdAt`, anchored at **2026-07-15 00:00 America/São_Paulo** (`2026-07-15T03:00:00Z`). Every boundary lands on the 15th at midnight Brasília time; the offset is a fixed `−03:00` (Brazil dropped DST in 2019 and the anchor is 2026), so the arithmetic is exact **without a date library**. Season 1 is `[anchor, anchor+3mo)`, Season N is `[anchor+3(N−1)mo, anchor+3N mo)`, and **Season 0** is everything before the anchor (open-ended past). Intervals are semi-open `[start, end)` so a match is never counted twice. **There is no `Season` table and no `seasonId` column** — that would reopen the drift bug the `Match`-as-source-of-truth ADR eliminated. All of it lives in `src/lib/seasons.ts` (pure, no I/O): `currentSeasonId`, `seasonBoundaries`, `listSeasons`, `seasonKey`, `seasonWhere` (the Prisma `where` fragment every scoped read composes), `resolvePreferredSeason`/`toPreference`. `"all"` (All time) yields an **empty** `where` fragment, so the all-time path is byte-for-byte the pre-seasons behaviour. Selection is a client `SeasonContext` (`src/contexts/SeasonContext.tsx`) seeded from `User.preferredSeason` and persisted via `PATCH /api/me/preferences`; the `SeasonSelect` dropdown sits in `AppHeader` (via `headerExtra`) next to `ModeToggle`, gated by the `seasonsEnabled` flag. **Client query keys include the season** (`queryKeys.killers(perspective, season)` etc.) so windows never collide; `invalidateMatchDerived` invalidates by first-segment prefix so it busts every perspective **and** season. **Writes are blocked outside the current season** (`readOnlySeason` in `src/lib/api.ts` → `409`, plus disabled UI): a match is always stamped `now()`, so crediting a past window would desync the optimistic patch. `All time` **is** writable (a `+1` there is correct).
+
+> **ADR (Seasons × crews — displayed streak is derived).** Inside a season window a crew's `currentStreak`/`bestStreak` are **recomputed** from the `CrewMatch` rows in that window (`runsForWindow` → `recomputeStreakRuns` in `src/lib/streak.ts`); for `All time` the **persisted** `CrewStreakRun` counters are used unchanged. Consequence: a run that opened before a rollover shows a **partial** count in the seasonal view and its full count in All time — the displayed number may legitimately differ from `CrewStreakRun.winCount`, which remains the source of truth for the **write path**. A calendar rollover **never** closes an active run. ⚠️ `crewInclude.matches` is ordered `createdAt: "desc"` while `recomputeStreakRuns` walks **chronologically** — `runsForWindow` reverses the list, and `src/lib/crews.test.ts` has a dedicated anti-inversion test because getting this wrong produces plausible but wrong streaks. Legacy `getTeamStreaks`/`getTeamStreak` follow the same rule.
 
 > **Note:** `Match.userId` is currently optional (`String?`), a migration artifact. All queries filter by `userId`, so a null-`userId` match is invisible (orphaned). Prefer setting `userId` on every write.
 
@@ -116,6 +121,8 @@ npm run db:generate  # regenerate Prisma client after schema changes
 Every route below (except NextAuth's own handler and `signup`) requires a session and returns `401` without one. Data is scoped to `session.user.id`.
 
 > **Perspective-aware routes.** The match-derived reads/writes accept a `?perspective=survivor|killer` query param (parsed via `parsePerspective` in `src/lib/api.ts`, defaulting to `survivor` and coercing invalid values rather than 400ing): `GET /api/killers`, the four `killers/[id]/{win,loss}[/undo]` writes, `GET /api/history`, `GET /api/community/profiles`, `GET /api/rank`. See the Killer-mode ADR in the Database section.
+
+> **Season-aware routes.** The same reads plus `GET /api/stats/streaks`, `GET /api/streaks`, `GET /api/crews`, `GET /api/crews/[id]` accept `?season=<n>|all` (parsed via `parseSeason` in `src/lib/api.ts` — **coerces** a missing/bogus value to the current season and clamps a future one, never 400s). The **write** routes (`killers/[id]/{win,loss}[/undo]`, `POST /api/crews/[id]/matches`, `DELETE /api/crews/[id]/matches/[cmId]`) read it only to gate with `readOnlySeason` → `409 { error: "Past seasons are read-only" }` and to project their response through the selected window. See the Seasons ADRs in the Database section.
 
 | Method | Path | Action |
 |--------|------|--------|
@@ -144,7 +151,7 @@ Every route below (except NextAuth's own handler and `signup`) requires a sessio
 | GET | `/api/crews/invitees` | Search invitable public profiles by nick/name (`?q=`, ≥2 chars) |
 | GET | `/api/invites` | Current user's pending crew invites (the avatar bell) |
 | POST | `/api/invites/[id]/respond` | Accept or decline an invite (`{ action }`) |
-| PATCH | `/api/me/preferences` | Persist the current user's play mode (`{ mode: "survivor" \| "killer" }` → `User.preferredMode`) |
+| PATCH | `/api/me/preferences` | Persist the current user's play mode and/or season intent (`{ mode?: "survivor" \| "killer", season?: "current" \| "all" \| "<n>" }`; at least one field required) |
 | POST | `/api/signup` | Create an account (public) |
 | GET / POST | `/api/auth/[...nextauth]` | NextAuth handlers |
 

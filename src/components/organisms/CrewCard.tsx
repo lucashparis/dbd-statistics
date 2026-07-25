@@ -14,6 +14,8 @@ interface CrewCardProps {
   onRemoveMember?: (crewId: number, userId: string) => void;
   onDeleteCrew?: (crewId: number) => void;
   onSetPolicy?: (crewId: number, policy: CrewWritePolicy) => void;
+  // Past seasons are historical: the timeline is visible but not editable.
+  readOnly?: boolean;
 }
 
 function StatusBadge({ status }: { status: CrewMemberView["status"] }) {
@@ -29,10 +31,12 @@ export function CrewCard({
   onRemoveMember,
   onDeleteCrew,
   onSetPolicy,
+  readOnly = false,
 }: CrewCardProps) {
   const [open, setOpen] = React.useState(false);
   const [confirmId, setConfirmId] = React.useState<number | null>(null);
   const manage = crew.isOwner && (onRemoveMember != null || onDeleteCrew != null || onSetPolicy != null);
+  const canDeleteMatch = onDeleteMatch != null && !readOnly;
 
   return (
     <article className="card-dark p-5 space-y-4">
@@ -155,14 +159,14 @@ export function CrewCard({
                     <span className="text-xs text-muted">
                       {new Date(m.createdAt).toLocaleDateString("pt-BR")}
                     </span>
-                    {onDeleteMatch &&
+                    {canDeleteMatch &&
                       (confirmId === m.id ? (
                         <span className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => {
                               setConfirmId(null);
-                              onDeleteMatch(crew.id, m.id);
+                              onDeleteMatch?.(crew.id, m.id);
                             }}
                             disabled={deletingMatchId === m.id}
                             className="text-[11px] font-medium text-blood transition-colors hover:text-blood-dark disabled:opacity-50"

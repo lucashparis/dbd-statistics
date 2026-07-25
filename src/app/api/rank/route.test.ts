@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "@/app/api/rank/route";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getRankedProfiles } from "@/lib/community";
-import type { RankEntry, RankPage } from "@/types/profile";
+import { currentSeasonId } from "@/lib/seasons";
+import { RANK_MIN_MATCHES, type RankEntry, type RankPage } from "@/types/profile";
 
 vi.mock("@/lib/auth-helpers", () => ({ getSessionUserId: vi.fn() }));
 vi.mock("@/lib/community", () => ({ getRankedProfiles: vi.fn() }));
 
 function emptyPage(): RankPage {
-  return { entries: [], hasMore: false, me: null };
+  return { entries: [], hasMore: false, me: null, minMatches: RANK_MIN_MATCHES };
 }
 
 function req(qs = "") {
@@ -39,7 +40,18 @@ describe("GET /api/rank", () => {
       pageSize: 10,
       viewerId: "viewer1",
       perspective: "survivor",
+      season: currentSeasonId(),
     });
+  });
+
+  it("forwards the requested season to the lib", async () => {
+    await GET(req("?season=0"));
+    expect(vi.mocked(getRankedProfiles).mock.calls[0][0].season).toBe(0);
+  });
+
+  it("forwards the all-time selection to the lib", async () => {
+    await GET(req("?season=all"));
+    expect(vi.mocked(getRankedProfiles).mock.calls[0][0].season).toBe("all");
   });
 
   it("forwards the killer perspective to the lib", async () => {
@@ -77,6 +89,7 @@ describe("GET /api/rank", () => {
       entries: [],
       hasMore: false,
       me: { status: "ranked", entry },
+      minMatches: RANK_MIN_MATCHES,
     });
     const body = await (await GET(req())).json();
     expect(body.me.status).toBe("ranked");

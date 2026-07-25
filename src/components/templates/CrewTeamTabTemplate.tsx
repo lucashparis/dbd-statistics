@@ -6,7 +6,12 @@ import { CrewManager } from "@/components/organisms/CrewManager";
 import { CrewCard } from "@/components/organisms/CrewCard";
 
 export function CrewTeamTabTemplate({ isActive }: { isActive: boolean }) {
-  const { crews, loading, creating, createCrew, deleteCrew, setPolicy, removeMember } = useCrews(isActive);
+  // Crew management (create, invite, policy) is season-agnostic, so this tab
+  // always reads the all-time projection — only the Streak tab is windowed.
+  const { crews, loading, creating, createCrew, deleteCrew, setPolicy, removeMember } = useCrews(
+    isActive,
+    "all"
+  );
 
   return (
     <div className="space-y-10">

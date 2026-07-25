@@ -6,15 +6,17 @@ import { useCommunity } from "@/hooks/useCommunity";
 import { ProfileCard } from "@/components/molecules/ProfileCard";
 import { EmptyState } from "@/components/molecules/EmptyState";
 import { Button } from "@/components/atoms/Button";
+import type { SeasonSelection } from "@/lib/seasons";
 import type { Perspective } from "@/types/killer";
 
 interface CommunityTabTemplateProps {
   isActive: boolean;
   perspective?: Perspective;
+  season?: SeasonSelection;
 }
 
-export function CommunityTabTemplate({ isActive, perspective = "survivor" }: CommunityTabTemplateProps) {
-  const { profiles, hasMore, loading, loadingMore, error, loadMore, retry } = useCommunity(isActive, perspective);
+export function CommunityTabTemplate({ isActive, perspective = "survivor", season = "all" }: CommunityTabTemplateProps) {
+  const { profiles, hasMore, loading, loadingMore, error, loadMore, retry } = useCommunity(isActive, perspective, season);
 
   if (loading) {
     return (

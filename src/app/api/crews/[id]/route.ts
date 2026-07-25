@@ -3,13 +3,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewDetail } from "@/lib/crews";
-import { mutationError, parseId } from "@/lib/api";
+import { mutationError, parseId, parseSeason } from "@/lib/api";
 
 const patchSchema = z.object({
   writePolicy: z.enum(["hostOnly", "allMembers"]),
 });
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -17,7 +17,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const crewId = parseId(id);
   if (!crewId) return NextResponse.json({ error: "Invalid crew ID" }, { status: 400 });
 
-  const crew = await getCrewDetail(userId, crewId);
+  const season = parseSeason(new URL(req.url).searchParams.get("season"));
+  const crew = await getCrewDetail(userId, crewId, season);
   if (!crew) return NextResponse.json({ error: "Crew not found" }, { status: 404 });
   return NextResponse.json(crew);
 }
@@ -42,7 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   try {
     await prisma.crew.update({ where: { id: crewId }, data: { writePolicy: parsed.data.writePolicy } });
-    const detail = await getCrewDetail(userId, crewId);
+    const detail = await getCrewDetail(userId, crewId, parseSeason(new URL(req.url).searchParams.get("season")));
     return NextResponse.json(detail);
   } catch (e) {
     return mutationError("update crew", e);

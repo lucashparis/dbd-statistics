@@ -58,4 +58,34 @@ describe("PATCH /api/me/preferences", () => {
     const res = await PATCH(req({ mode: "survivor" }));
     expect(res.status).toBe(500);
   });
+
+  it.each(["current", "all", "0", "3"])("persists the season intent %j", async (season) => {
+    vi.mocked(prisma.user.update).mockResolvedValueOnce({} as never);
+    const res = await PATCH(req({ season }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ season });
+    expect(vi.mocked(prisma.user.update)).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { preferredSeason: season },
+    });
+  });
+
+  it("persists mode and season together", async () => {
+    vi.mocked(prisma.user.update).mockResolvedValueOnce({} as never);
+    const res = await PATCH(req({ mode: "killer", season: "all" }));
+    expect(res.status).toBe(200);
+    expect(vi.mocked(prisma.user.update)).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { preferredMode: "killer", preferredSeason: "all" },
+    });
+  });
+
+  it.each(["-1", "1.5", "latest", ""])(
+    "returns 400 for the invalid season %j",
+    async (season) => {
+      const res = await PATCH(req({ season }));
+      expect(res.status).toBe(400);
+      expect(vi.mocked(prisma.user.update)).not.toHaveBeenCalled();
+    }
+  );
 });

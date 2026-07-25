@@ -2,7 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useRank } from "@/hooks/useRank";
 import { createQueryWrapper } from "@/test/queryWrapper";
-import type { RankEntry, RankMetric, RankPage, RankViewer } from "@/types/profile";
+import {
+  RANK_MIN_MATCHES,
+  SEASON_RANK_MIN_MATCHES,
+  type RankEntry,
+  type RankMetric,
+  type RankPage,
+  type RankViewer,
+} from "@/types/profile";
 
 function entry(userId: string, rank: number): RankEntry {
   return {
@@ -17,8 +24,13 @@ function entry(userId: string, rank: number): RankEntry {
   };
 }
 
-function pageData(entries: RankEntry[], hasMore: boolean, me: RankViewer | null = null): RankPage {
-  return { entries, hasMore, me };
+function pageData(
+  entries: RankEntry[],
+  hasMore: boolean,
+  me: RankViewer | null = null,
+  minMatches = RANK_MIN_MATCHES
+): RankPage {
+  return { entries, hasMore, me, minMatches };
 }
 
 function ranked(userId: string, rank: number): RankViewer {
@@ -98,5 +110,41 @@ describe("useRank", () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
     rerender({ m: "wins" as RankMetric, s: "abc" });
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(3));
+  });
+
+  it("sends the season and refetches under a distinct key when it changes", async () => {
+    mockFetch.mockResolvedValue(res(200, pageData([], false)));
+    const { Wrapper } = createQueryWrapper();
+    const { rerender } = renderHook(
+      ({ season }) => useRank(true, "matches", "", "survivor", season),
+      { wrapper: Wrapper, initialProps: { season: 1 as number | "all" } }
+    );
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    expect(mockFetch.mock.calls[0][0] as string).toContain("season=1");
+
+    rerender({ season: "all" });
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(mockFetch.mock.calls[1][0] as string).toContain("season=all");
+  });
+
+  it("surfaces the threshold the server used, falling back to the season default", async () => {
+    mockFetch.mockResolvedValue(res(200, pageData([], false, null, SEASON_RANK_MIN_MATCHES)));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useRank(true, "matches", "", "survivor", 1), {
+      wrapper: Wrapper,
+    });
+    expect(result.current.minMatches).toBe(SEASON_RANK_MIN_MATCHES);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.minMatches).toBe(SEASON_RANK_MIN_MATCHES);
+  });
+
+  it("defaults the threshold to the all-time bar for the all-time window", async () => {
+    mockFetch.mockResolvedValue(res(200, pageData([], false)));
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useRank(true, "matches", "", "survivor", "all"), {
+      wrapper: Wrapper,
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.minMatches).toBe(RANK_MIN_MATCHES);
   });
 });

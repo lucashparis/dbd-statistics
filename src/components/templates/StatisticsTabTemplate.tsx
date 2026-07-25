@@ -6,6 +6,7 @@ import { KillerDetailPanel } from "@/components/organisms/KillerDetailPanel";
 import { StatisticsOverview } from "@/components/organisms/StatisticsOverview";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
 import { useStreaks } from "@/hooks/useStreaks";
+import type { SeasonSelection } from "@/lib/seasons";
 import type { KillerStats, Perspective } from "@/types/killer";
 
 interface StatisticsTabTemplateProps {
@@ -14,11 +15,12 @@ interface StatisticsTabTemplateProps {
   statsNav?: { killer: KillerStats; nonce: number } | null;
   onNavigateToStats?: (killer: KillerStats) => void;
   perspective?: Perspective;
+  season?: SeasonSelection;
 }
 
-export function StatisticsTabTemplate({ killers, isLoading, statsNav, onNavigateToStats, perspective = "survivor" }: StatisticsTabTemplateProps) {
+export function StatisticsTabTemplate({ killers, isLoading, statsNav, onNavigateToStats, perspective = "survivor", season = "all" }: StatisticsTabTemplateProps) {
   const autocomplete = useAutocomplete(killers);
-  const { streaks } = useStreaks(perspective);
+  const { streaks } = useStreaks(perspective, season);
   const selectedStreaks = autocomplete.selected ? streaks.perKiller[autocomplete.selected.id] : undefined;
 
   React.useEffect(() => {

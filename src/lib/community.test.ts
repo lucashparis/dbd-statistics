@@ -3,6 +3,7 @@ import { getPublicProfiles, getPublicProfile, getRankedProfiles } from "@/lib/co
 import { prisma } from "@/lib/prisma";
 import { getKillersForUser } from "@/lib/killers";
 import { getStreaksForUser } from "@/lib/streak";
+import { RANK_MIN_MATCHES, SEASON_RANK_MIN_MATCHES } from "@/types/profile";
 
 vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
 vi.mock("@/lib/killers", () => ({ getKillersForUser: vi.fn() }));
@@ -163,6 +164,35 @@ describe("getRankedProfiles", () => {
     });
   }
 
+  it("lowers the eligibility bar inside a season window", async () => {
+    seed(rows5, groups5);
+    // u3 has 10 matches: below the all-time bar of 20, exactly at the season bar.
+    const allTime = await rank({ season: "all" });
+    const seasonal = await rank({ season: 1 });
+    expect(allTime.minMatches).toBe(RANK_MIN_MATCHES);
+    expect(seasonal.minMatches).toBe(SEASON_RANK_MIN_MATCHES);
+    expect(allTime.entries.map((e) => e.userId)).not.toContain("u3");
+    expect(seasonal.entries.map((e) => e.userId)).toContain("u3");
+  });
+
+  it("scopes the aggregate query and the viewer count to the season window", async () => {
+    seed(rows5, groups5);
+    vi.mocked(prisma.profile.findUnique).mockResolvedValue({ userId: "u9" } as never);
+    vi.mocked(prisma.match.count).mockResolvedValue(4);
+
+    const result = await rank({ viewerId: "u9", season: 0 });
+
+    const window = { createdAt: { lt: new Date("2026-07-15T03:00:00.000Z") } };
+    expect(vi.mocked(prisma.match.groupBy).mock.calls[0][0].where).toMatchObject(window);
+    expect(vi.mocked(prisma.match.count).mock.calls[0][0]?.where).toMatchObject(window);
+    // `remaining` has to be measured against the seasonal bar, not the all-time one.
+    expect(result.me).toEqual({
+      status: "belowThreshold",
+      total: 4,
+      remaining: SEASON_RANK_MIN_MATCHES - 4,
+    });
+  });
+
   it("excludes profiles with fewer than 20 matches and reports the viewer as belowThreshold", async () => {
     seed(rows5, groups5);
     vi.mocked(prisma.profile.findUnique).mockResolvedValue({ userId: "u3" } as never);
@@ -242,6 +272,11 @@ describe("getRankedProfiles", () => {
   it("degrades to an empty payload when the database fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(prisma.profile.findMany).mockRejectedValueOnce(new Error("db down"));
-    expect(await rank()).toEqual({ entries: [], hasMore: false, me: null });
+    expect(await rank()).toEqual({
+      entries: [],
+      hasMore: false,
+      me: null,
+      minMatches: RANK_MIN_MATCHES,
+    });
   });
 });

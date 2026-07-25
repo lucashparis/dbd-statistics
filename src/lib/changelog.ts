@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "@/types/changelog";
 
 const ENTRIES: ChangelogEntry[] = [
   {
+    id: "seasons",
+    feature: "Seasons",
+    date: "2026-07-24",
+    description:
+      "Your stats are now split into 3-month seasons, starting July 15, 2026. Switch seasons from the header to see the killer grid, statistics, streaks, crews, history, community and rank for that period — or pick All time for your full record. Everything you played before July 15, 2026 lives in Season 0, and your choice is remembered across devices.",
+    requestedBy: "Léo",
+  },
+  {
     id: "killer-mode",
     feature: "Killer mode",
     date: "2026-07-23",

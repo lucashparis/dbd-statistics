@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { canWrite, getCrewDetail } from "@/lib/crews";
 import { recomputeStreakRuns } from "@/lib/streak";
-import { mutationError, parseId } from "@/lib/api";
+import { mutationError, parseId, parseSeason, readOnlySeason } from "@/lib/api";
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string; cmId: string }> }
 ) {
   const userId = await getSessionUserId();
@@ -19,6 +19,10 @@ export async function DELETE(
   if (!crewId || !crewMatchId) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
+
+  const season = parseSeason(new URL(req.url).searchParams.get("season"));
+  const blocked = readOnlySeason(season);
+  if (blocked) return blocked;
 
   const crewMatch = await prisma.crewMatch.findUnique({
     where: { id: crewMatchId },
@@ -78,6 +82,6 @@ export async function DELETE(
   for (const memberId of acceptedIds) revalidateTag(`streaks:${memberId}`, "max");
   revalidateTag("community", "max");
 
-  const detail = await getCrewDetail(userId, crewId);
+  const detail = await getCrewDetail(userId, crewId, season);
   return NextResponse.json(detail);
 }

@@ -10,25 +10,29 @@ import { RankSelfBanner } from "@/components/molecules/RankSelfBanner";
 import { KillerSearchInput } from "@/components/molecules/KillerSearchInput";
 import { EmptyState } from "@/components/molecules/EmptyState";
 import { Button } from "@/components/atoms/Button";
-import { RANK_MIN_MATCHES, type RankMetric } from "@/types/profile";
+import { type RankMetric } from "@/types/profile";
+import { seasonLabel, type SeasonSelection } from "@/lib/seasons";
 import type { Perspective } from "@/types/killer";
 
 interface RankTabTemplateProps {
   isActive: boolean;
   perspective?: Perspective;
+  season?: SeasonSelection;
 }
 
-export function RankTabTemplate({ isActive, perspective = "survivor" }: RankTabTemplateProps) {
+export function RankTabTemplate({ isActive, perspective = "survivor", season = "all" }: RankTabTemplateProps) {
   const [metric, setMetric] = React.useState<RankMetric>("matches");
   const [searchInput, setSearchInput] = React.useState("");
   const search = useDebouncedValue(searchInput, 300);
 
-  const { entries, me, hasMore, loading, loadingMore, error, loadMore, retry } = useRank(
+  const { entries, me, minMatches, hasMore, loading, loadingMore, error, loadMore, retry } = useRank(
     isActive,
     metric,
     search,
-    perspective
+    perspective,
+    season
   );
+  const windowLabel = season === "all" ? "" : ` in ${seasonLabel(season)}`;
 
   const hasSearch = search.trim().length > 0;
   const meUserId = me?.status === "ranked" ? me.entry.userId : undefined;
@@ -61,8 +65,8 @@ export function RankTabTemplate({ isActive, perspective = "survivor" }: RankTabT
     ) : (
       <EmptyState
         icon={Trophy}
-        title={`No players have ${RANK_MIN_MATCHES}+ matches yet`}
-        description={`Once players reach ${RANK_MIN_MATCHES} matches, they'll show up here.`}
+        title={`No players have ${minMatches}+ matches${windowLabel} yet`}
+        description={`Once players reach ${minMatches} matches${windowLabel}, they'll show up here.`}
       />
     );
   } else {
@@ -97,10 +101,12 @@ export function RankTabTemplate({ isActive, perspective = "survivor" }: RankTabT
       </div>
 
       <p className="text-xs text-muted">
-        Only players with at least {RANK_MIN_MATCHES} matches appear in the rank.
+        Only players with at least {minMatches} matches{windowLabel} appear in the rank.
       </p>
 
-      {!loading && !error && <RankSelfBanner me={me} metric={metric} />}
+      {!loading && !error && (
+        <RankSelfBanner me={me} metric={metric} minMatches={minMatches} />
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <RankMetricToggle value={metric} onChange={setMetric} />

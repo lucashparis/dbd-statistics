@@ -42,7 +42,7 @@ describe("GET /api/killers", () => {
       { killerId: 1, result: "win", _count: { _all: 6 } },
       { killerId: 1, result: "loss", _count: { _all: 4 } },
     ] as never);
-    const res = await GET(req());
+    const res = await GET(req("http://localhost/api/killers?season=all"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(1);
@@ -52,10 +52,28 @@ describe("GET /api/killers", () => {
     );
   });
 
+  it("scopes the grid to the requested season window", async () => {
+    vi.mocked(prisma.killer.findMany).mockResolvedValueOnce([killerRow]);
+    vi.mocked(prisma.match.groupBy).mockResolvedValueOnce([] as never);
+    await GET(req("http://localhost/api/killers?season=1"));
+    expect(vi.mocked(prisma.match.groupBy)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "u1",
+          perspective: "survivor",
+          createdAt: {
+            gte: new Date("2026-07-15T03:00:00.000Z"),
+            lt: new Date("2026-10-15T03:00:00.000Z"),
+          },
+        },
+      })
+    );
+  });
+
   it("scopes the query to the killer perspective when requested", async () => {
     vi.mocked(prisma.killer.findMany).mockResolvedValueOnce([killerRow]);
     vi.mocked(prisma.match.groupBy).mockResolvedValueOnce([] as never);
-    await GET(req("http://localhost/api/killers?perspective=killer"));
+    await GET(req("http://localhost/api/killers?perspective=killer&season=all"));
     expect(vi.mocked(prisma.match.groupBy)).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "u1", perspective: "killer" } })
     );

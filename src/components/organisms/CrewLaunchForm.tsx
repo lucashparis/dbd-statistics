@@ -5,6 +5,7 @@ import { Swords, Skull, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EntityAutocomplete } from "@/components/organisms/EntityAutocomplete";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
+import { READ_ONLY_SEASON_HINT } from "@/components/molecules/ActionButtons";
 import type { Crew } from "@/types/crew";
 import type { KillerStats, MatchResult } from "@/types/killer";
 
@@ -13,12 +14,21 @@ interface CrewLaunchFormProps {
   killers: KillerStats[];
   launching: boolean;
   onLaunch: (crewId: number, killerId: number, result: MatchResult) => Promise<boolean>;
+  // A crew match is stamped with `now()`, so it can only be logged while the
+  // current season (or all time) is on screen.
+  readOnly?: boolean;
 }
 
 const fieldClass =
   "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-blood";
 
-export function CrewLaunchForm({ crews, killers, launching, onLaunch }: CrewLaunchFormProps) {
+export function CrewLaunchForm({
+  crews,
+  killers,
+  launching,
+  onLaunch,
+  readOnly = false,
+}: CrewLaunchFormProps) {
   const writable = crews.filter((c) => c.canWrite);
   const [crewId, setCrewId] = React.useState<number | "">("");
   const [result, setResult] = React.useState<MatchResult>("win");
@@ -30,6 +40,17 @@ export function CrewLaunchForm({ crews, killers, launching, onLaunch }: CrewLaun
     if (crewId === "" || killerId === "") return;
     const ok = await onLaunch(Number(crewId), Number(killerId), result);
     if (ok) killerAutocomplete.clearSelection();
+  }
+
+  if (readOnly) {
+    return (
+      <section className="card-dark p-5">
+        <h3 className="mb-2 text-xs uppercase tracking-widest text-muted">Log a match</h3>
+        <p className="text-sm text-muted">
+          {READ_ONLY_SEASON_HINT} — switch to the current season to log a match.
+        </p>
+      </section>
+    );
   }
 
   if (writable.length === 0) {

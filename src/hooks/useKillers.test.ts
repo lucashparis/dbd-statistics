@@ -110,4 +110,38 @@ describe("useKillers", () => {
 
     await waitFor(() => expect(result.current.killers[0].wins).toBe(9));
   });
+
+  it("sends the season on the list request and on the mutations", async () => {
+    routeFetch([killerFixture], true);
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture], "survivor", 1), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.registerWin(1);
+    });
+
+    const patchUrl = mockFetch.mock.calls
+      .map((c) => c[0] as string)
+      .find((url) => url.includes("/win"));
+    expect(patchUrl).toContain("season=1");
+  });
+
+  it("fetches instead of reusing the seed when the season changes", async () => {
+    routeFetch([{ ...killerFixture, wins: 99 }], true);
+    const { Wrapper } = createQueryWrapper();
+    // The server seeded season 1. Switching to season 0 must hit the API — reusing
+    // the seed would show the current window's numbers inside a past one.
+    const { result, rerender } = renderHook(({ season }) => useKillers([killerFixture], "survivor", season), {
+      wrapper: Wrapper,
+      initialProps: { season: 1 as number | "all" },
+    });
+    expect(result.current.killers[0].wins).toBe(6);
+
+    rerender({ season: 0 });
+
+    await waitFor(() => expect(result.current.killers[0]?.wins).toBe(99));
+    expect(mockFetch.mock.calls.some((c) => (c[0] as string).includes("season=0"))).toBe(true);
+  });
 });

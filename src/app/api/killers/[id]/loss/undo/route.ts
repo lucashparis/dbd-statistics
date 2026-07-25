@@ -3,7 +3,8 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getKillerForUser } from "@/lib/killers";
-import { parseId, parsePerspective } from "@/lib/api";
+import { parseId, parsePerspective, parseSeason, readOnlySeason } from "@/lib/api";
+import { seasonWhere } from "@/lib/seasons";
 
 export async function PATCH(
   req: Request,
@@ -20,14 +21,20 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid killer ID" }, { status: 400 });
   }
 
+  const sp = new URL(req.url).searchParams;
+  const perspective = parsePerspective(sp.get("perspective"));
+  const season = parseSeason(sp.get("season"));
+  const blocked = readOnlySeason(season);
+  if (blocked) return blocked;
+
   try {
     const userId = session.user.id;
-    const perspective = parsePerspective(new URL(req.url).searchParams.get("perspective"));
 
     // Only quick-log matches (teamId null) can be undone here — streak matches
-    // are managed from the Streak tab.
+    // are managed from the Streak tab. The window keeps the undo from reaching
+    // back into a season the user is not looking at.
     const lastLoss = await prisma.match.findFirst({
-      where: { userId, killerId, result: "loss", teamId: null, perspective },
+      where: { userId, killerId, result: "loss", teamId: null, perspective, ...seasonWhere(season) },
       orderBy: { createdAt: "desc" },
     });
     if (lastLoss) {
@@ -36,7 +43,7 @@ export async function PATCH(
       revalidateTag("community", "max");
     }
 
-    const killer = await getKillerForUser(userId, killerId, perspective);
+    const killer = await getKillerForUser(userId, killerId, perspective, season);
     if (!killer) {
       return NextResponse.json({ error: "Killer not found" }, { status: 404 });
     }

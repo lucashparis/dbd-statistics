@@ -18,6 +18,7 @@ interface KillersTabTemplateProps {
   onUndoWin: (id: number) => void;
   onUndoLoss: (id: number) => void;
   onNavigateToStats: (killer: KillerStats) => void;
+  readOnly?: boolean;
 }
 
 export function KillersTabTemplate({
@@ -32,6 +33,7 @@ export function KillersTabTemplate({
   onUndoWin,
   onUndoLoss,
   onNavigateToStats,
+  readOnly = false,
 }: KillersTabTemplateProps) {
   const autocomplete = useAutocomplete(killers);
 
@@ -69,6 +71,7 @@ export function KillersTabTemplate({
         onUndoWin={onUndoWin}
         onUndoLoss={onUndoLoss}
         onKillerClick={onNavigateToStats}
+        readOnly={readOnly}
       />
     </div>
   );

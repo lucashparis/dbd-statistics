@@ -5,7 +5,18 @@ import { getSessionUserId } from "@/lib/auth-helpers";
 import { mutationError } from "@/lib/api";
 import type { Perspective } from "@/types/killer";
 
-const bodySchema = z.object({ mode: z.enum(["survivor", "killer"]) });
+// The season field stores an *intent*, not a resolved id: "current" follows the
+// rollover so a saved preference never pins a finished season.
+const bodySchema = z
+  .object({
+    mode: z.enum(["survivor", "killer"]).optional(),
+    season: z
+      .union([z.literal("current"), z.literal("all"), z.string().regex(/^\d+$/)])
+      .optional(),
+  })
+  .refine((body) => body.mode !== undefined || body.season !== undefined, {
+    message: "Nothing to update",
+  });
 
 export async function PATCH(req: Request) {
   const userId = await getSessionUserId();
@@ -17,12 +28,20 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
+  const { mode, season } = parsed.data;
+
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: { preferredMode: parsed.data.mode },
+      data: {
+        ...(mode ? { preferredMode: mode } : {}),
+        ...(season ? { preferredSeason: season } : {}),
+      },
     });
-    return NextResponse.json({ mode: parsed.data.mode satisfies Perspective });
+    return NextResponse.json({
+      ...(mode ? { mode: mode satisfies Perspective } : {}),
+      ...(season ? { season } : {}),
+    });
   } catch (e) {
     return mutationError("preferences update", e);
   }

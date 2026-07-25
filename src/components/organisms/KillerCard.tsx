@@ -19,6 +19,7 @@ interface KillerCardProps {
   onUndoWin: (id: number) => void;
   onUndoLoss: (id: number) => void;
   onKillerClick?: (killer: KillerStats) => void;
+  readOnly?: boolean;
 }
 
 export function KillerCard({
@@ -32,6 +33,7 @@ export function KillerCard({
   onUndoWin,
   onUndoLoss,
   onKillerClick,
+  readOnly = false,
 }: KillerCardProps) {
   return (
     <article
@@ -84,6 +86,7 @@ export function KillerCard({
           onLoss={onLoss}
           onUndoWin={onUndoWin}
           onUndoLoss={onUndoLoss}
+          readOnly={readOnly}
         />
       </div>
     </article>

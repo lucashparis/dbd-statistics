@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewDetail } from "@/lib/crews";
-import { mutationError, parseId } from "@/lib/api";
+import { mutationError, parseId, parseSeason } from "@/lib/api";
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
   const callerId = await getSessionUserId();
@@ -26,7 +26,8 @@ export async function DELETE(
 
   try {
     await prisma.crewMember.delete({ where: { crewId_userId: { crewId, userId: targetId } } });
-    const detail = await getCrewDetail(callerId, crewId);
+    const season = parseSeason(new URL(req.url).searchParams.get("season"));
+    const detail = await getCrewDetail(callerId, crewId, season);
     return NextResponse.json(detail);
   } catch (e) {
     return mutationError("remove crew member", e);

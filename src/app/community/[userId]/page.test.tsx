@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import CommunityProfilePage from "@/app/community/[userId]/page";
 import { getPublicProfile } from "@/lib/community";
+import { currentSeasonId } from "@/lib/seasons";
 import { notFound } from "next/navigation";
 import type { PublicProfileDetail } from "@/types/profile";
 
@@ -43,7 +44,10 @@ describe("CommunityProfilePage", () => {
   it("calls notFound when the survivor profile does not exist", async () => {
     vi.mocked(getPublicProfile).mockResolvedValue(null);
     await expect(
-      CommunityProfilePage({ params: Promise.resolve({ userId: "ghost" }) })
+      CommunityProfilePage({
+        params: Promise.resolve({ userId: "ghost" }),
+        searchParams: Promise.resolve({}),
+      })
     ).rejects.toThrow("NEXT_NOT_FOUND");
     expect(notFound).toHaveBeenCalled();
   });
@@ -53,9 +57,41 @@ describe("CommunityProfilePage", () => {
     vi.mocked(getPublicProfile)
       .mockResolvedValueOnce(detail)
       .mockResolvedValueOnce({ ...detail, streaks: null });
-    render(await CommunityProfilePage({ params: Promise.resolve({ userId: "u1" }) }));
+    render(
+      await CommunityProfilePage({
+        params: Promise.resolve({ userId: "u1" }),
+        searchParams: Promise.resolve({ season: "all" }),
+      })
+    );
     expect(screen.getByTestId("profile-view")).toHaveTextContent("dead");
-    expect(getPublicProfile).toHaveBeenCalledWith("u1", "survivor");
-    expect(getPublicProfile).toHaveBeenCalledWith("u1", "killer");
+    expect(getPublicProfile).toHaveBeenCalledWith("u1", "survivor", "all");
+    expect(getPublicProfile).toHaveBeenCalledWith("u1", "killer", "all");
+  });
+
+  it("scopes both perspectives to the season in the URL", async () => {
+    vi.mocked(getPublicProfile)
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce({ ...detail, streaks: null });
+    render(
+      await CommunityProfilePage({
+        params: Promise.resolve({ userId: "u1" }),
+        searchParams: Promise.resolve({ season: "0" }),
+      })
+    );
+    expect(getPublicProfile).toHaveBeenCalledWith("u1", "survivor", 0);
+    expect(getPublicProfile).toHaveBeenCalledWith("u1", "killer", 0);
+  });
+
+  it("defaults to the current season when the URL carries no season", async () => {
+    vi.mocked(getPublicProfile)
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce({ ...detail, streaks: null });
+    render(
+      await CommunityProfilePage({
+        params: Promise.resolve({ userId: "u1" }),
+        searchParams: Promise.resolve({}),
+      })
+    );
+    expect(getPublicProfile).toHaveBeenCalledWith("u1", "survivor", currentSeasonId());
   });
 });

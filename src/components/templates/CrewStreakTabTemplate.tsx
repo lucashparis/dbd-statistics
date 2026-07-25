@@ -4,10 +4,26 @@ import * as React from "react";
 import { useCrews } from "@/hooks/useCrews";
 import { CrewLaunchForm } from "@/components/organisms/CrewLaunchForm";
 import { CrewCard } from "@/components/organisms/CrewCard";
+import { seasonLabel, type SeasonSelection } from "@/lib/seasons";
 import type { KillerStats } from "@/types/killer";
 
-export function CrewStreakTabTemplate({ isActive, killers }: { isActive: boolean; killers: KillerStats[] }) {
-  const { crews, loading, launching, deletingMatchId, logMatch, deleteMatch } = useCrews(isActive);
+interface CrewStreakTabTemplateProps {
+  isActive: boolean;
+  killers: KillerStats[];
+  season?: SeasonSelection;
+  readOnly?: boolean;
+}
+
+export function CrewStreakTabTemplate({
+  isActive,
+  killers,
+  season = "all",
+  readOnly = false,
+}: CrewStreakTabTemplateProps) {
+  const { crews, loading, launching, deletingMatchId, logMatch, deleteMatch } = useCrews(
+    isActive,
+    season
+  );
 
   return (
     <div className="space-y-8">
@@ -16,10 +32,20 @@ export function CrewStreakTabTemplate({ isActive, killers }: { isActive: boolean
         <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-widest text-white uppercase glow-blood-text">
           Streak
         </h2>
-        <p className="text-muted text-sm tracking-widest">Run the gauntlet — one loss resets it all</p>
+        <p className="text-muted text-sm tracking-widest">
+          {season === "all"
+            ? "Run the gauntlet — one loss resets it all"
+            : `${seasonLabel(season)} — one loss resets it all`}
+        </p>
       </header>
 
-      <CrewLaunchForm crews={crews} killers={killers} launching={launching} onLaunch={logMatch} />
+      <CrewLaunchForm
+        crews={crews}
+        killers={killers}
+        launching={launching}
+        onLaunch={logMatch}
+        readOnly={readOnly}
+      />
 
       {loading ? (
         <p className="text-center text-sm text-muted">Loading streaks…</p>
@@ -28,7 +54,13 @@ export function CrewStreakTabTemplate({ isActive, killers }: { isActive: boolean
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {crews.map((crew) => (
-            <CrewCard key={crew.id} crew={crew} onDeleteMatch={deleteMatch} deletingMatchId={deletingMatchId} />
+            <CrewCard
+              key={crew.id}
+              crew={crew}
+              onDeleteMatch={deleteMatch}
+              deletingMatchId={deletingMatchId}
+              readOnly={readOnly}
+            />
           ))}
         </div>
       )}
