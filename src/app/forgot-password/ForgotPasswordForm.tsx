@@ -1,35 +1,45 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { PasswordInput } from "@/components/molecules/PasswordInput";
 
 const inputClass =
   "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-blood";
 
-export function LoginForm() {
-  const router = useRouter();
+export function ForgotPasswordForm() {
   const [loading, setLoading] = React.useState(false);
+  const [sent, setSent] = React.useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     const email = String(data.get("email") ?? "");
-    const password = String(data.get("password") ?? "");
 
     setLoading(true);
-    const res = await signIn("credentials", { email, password, redirect: false });
-    setLoading(false);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-    if (!res || res.error) {
-      toast.error("Invalid email or password");
-      return;
+      if (!res.ok) {
+        toast.error("Could not send the reset link. Try again.");
+        return;
+      }
+      toast.success("If that email is registered, a reset link was sent.");
+      setSent(true);
+    } finally {
+      setLoading(false);
     }
-    router.push("/dashboard");
-    router.refresh();
+  }
+
+  if (sent) {
+    return (
+      <p className="text-center text-sm text-muted">
+        Check your inbox for a link to reset your password.
+      </p>
+    );
   }
 
   return (
@@ -38,18 +48,12 @@ export function LoginForm() {
         <span className="text-xs uppercase tracking-widest text-muted">Email</span>
         <input name="email" type="email" required autoComplete="email" className={inputClass} />
       </label>
-      <PasswordInput name="password" label="Password" required autoComplete="current-password" />
-      <p className="text-right text-xs">
-        <Link href="/forgot-password" className="text-muted transition-colors hover:text-blood">
-          Forgot password?
-        </Link>
-      </p>
       <button
         type="submit"
         disabled={loading}
         className="w-full rounded-md bg-blood py-2.5 text-sm font-medium text-white transition-colors hover:bg-blood-dark disabled:opacity-60"
       >
-        {loading ? "Entering…" : "Enter"}
+        {loading ? "Sending…" : "Send reset link"}
       </button>
     </form>
   );

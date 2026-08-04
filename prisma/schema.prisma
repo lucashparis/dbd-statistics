@@ -39,6 +39,10 @@ model User {
   email         String      @unique
   name          String?
   password      String
+  // Set on every successful password reset. A JWT issued before this instant
+  // is treated as stale (see the `jwt` callback in src/auth.ts) — this is what
+  // forces every other open session to log in again after a reset.
+  passwordChangedAt DateTime?
   preferredMode Perspective @default(survivor)
   // Season intent, not a season id: "current" | "all" | "<n>". Storing the
   // intent means a preference saved during one season still opens the *new*
@@ -51,10 +55,25 @@ model User {
   matches   Match[]
   streaks   StreakRun[]
   profile   Profile?
+  passwordResetTokens PasswordResetToken[]
 
   crewsOwned         Crew[]       @relation("CrewOwner")
   crewMemberships    CrewMember[]
   crewMatchesLogged  CrewMatch[]  @relation("CrewMatchLogger")
+}
+
+// A single-use, time-limited token for the "forgot password" flow. Only the
+// sha256 hash of the raw token is ever stored — see src/lib/password-reset.ts.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Killer {

@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "@/types/changelog";
 
 const ENTRIES: ChangelogEntry[] = [
   {
+    id: "password-reset",
+    feature: "Password reset",
+    date: "2026-08-04",
+    description:
+      "Forgot your password? Request a reset link from the login page and set a new password by email — no need to contact support. Resetting your password signs you out of every other device.",
+    requestedBy: "Community",
+  },
+  {
     id: "seasons",
     feature: "Seasons",
     date: "2026-07-24",

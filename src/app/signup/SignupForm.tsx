@@ -4,6 +4,7 @@ import * as React from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { PasswordInput } from "@/components/molecules/PasswordInput";
 
 const inputClass =
   "w-full rounded-md border border-subtle bg-surface-2 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-blood";
@@ -59,10 +60,7 @@ export function SignupForm() {
         <span className="text-xs uppercase tracking-widest text-muted">Email</span>
         <input name="email" type="email" required autoComplete="email" className={inputClass} />
       </label>
-      <label className="block space-y-1.5">
-        <span className="text-xs uppercase tracking-widest text-muted">Password</span>
-        <input name="password" type="password" required minLength={4} autoComplete="new-password" className={inputClass} />
-      </label>
+      <PasswordInput name="password" label="Password" required minLength={4} autoComplete="new-password" />
       <button
         type="submit"
         disabled={loading}
