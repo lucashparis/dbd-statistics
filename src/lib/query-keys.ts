@@ -18,6 +18,8 @@ export const queryKeys = {
   profile: ["profile"] as const,
   invites: ["invites"] as const,
   invitees: ["invitees"] as const,
+  adminBans: ["adminBans"] as const,
+  bannableUsers: ["bannableUsers"] as const,
 };
 
 // A `Match` write feeds every match-derived read: the killer grid/pie, the

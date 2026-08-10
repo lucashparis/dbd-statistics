@@ -12,6 +12,7 @@ import { crewsEnabled, killerModeEnabled, seasonsEnabled } from "@/lib/flags";
 import { HistoryTabTemplate } from "@/components/templates/HistoryTabTemplate";
 import { CommunityTabTemplate } from "@/components/templates/CommunityTabTemplate";
 import { RankTabTemplate } from "@/components/templates/RankTabTemplate";
+import { AdminTabTemplate } from "@/components/templates/AdminTabTemplate";
 import { ModeToggle } from "@/components/molecules/ModeToggle";
 import { SeasonSelect } from "@/components/molecules/SeasonSelect";
 import { ModeProvider, useMode } from "@/contexts/ModeContext";
@@ -25,6 +26,11 @@ interface KillersPageClientProps {
   initialKillers: KillerStats[];
   initialMode?: Perspective;
   initialSeason?: SeasonSelection;
+  isAdmin?: boolean;
+  // Read fresh on every dashboard render, so a ban takes hold without a new
+  // sign-in. The API routes enforce it again — this only keeps the client from
+  // firing a write it already knows will be rejected.
+  isBanned?: boolean;
 }
 
 // Tabs that only exist in survivor mode. When the user switches to killer mode
@@ -35,17 +41,27 @@ export function KillersPageClient({
   initialKillers,
   initialMode = "survivor",
   initialSeason = "all",
+  isAdmin = false,
+  isBanned = false,
 }: KillersPageClientProps) {
   return (
     <SeasonProvider initialSeason={seasonsEnabled ? initialSeason : "all"}>
       <ModeProvider initialMode={killerModeEnabled ? initialMode : "survivor"}>
-        <DashboardContent initialKillers={initialKillers} />
+        <DashboardContent initialKillers={initialKillers} isAdmin={isAdmin} isBanned={isBanned} />
       </ModeProvider>
     </SeasonProvider>
   );
 }
 
-function DashboardContent({ initialKillers }: { initialKillers: KillerStats[] }) {
+function DashboardContent({
+  initialKillers,
+  isAdmin,
+  isBanned,
+}: {
+  initialKillers: KillerStats[];
+  isAdmin: boolean;
+  isBanned: boolean;
+}) {
   const { mode } = useMode();
   const { season, isReadOnly } = useSeason();
   const isKiller = mode === "killer";
@@ -61,7 +77,7 @@ function DashboardContent({ initialKillers }: { initialKillers: KillerStats[] })
     registerLoss,
     undoWin,
     undoLoss,
-  } = useKillers(initialKillers, mode, season);
+  } = useKillers(initialKillers, mode, season, isBanned);
 
   const [activeTab, setActiveTab] = useState<TabId>("killers");
   const [statsNav, setStatsNav] = useState<{ killer: KillerStats; nonce: number } | null>(null);
@@ -69,7 +85,8 @@ function DashboardContent({ initialKillers }: { initialKillers: KillerStats[] })
   // Killer mode has no Streak/Team tabs. Derive the effective tab instead of
   // resetting state in an effect: the raw `activeTab` is remembered so switching
   // back to survivor restores the previous tab.
-  const effectiveTab = isKiller && SURVIVOR_ONLY_TABS.includes(activeTab) ? "killers" : activeTab;
+  const rawTab = !isAdmin && activeTab === "admin" ? "killers" : activeTab;
+  const effectiveTab = isKiller && SURVIVOR_ONLY_TABS.includes(rawTab) ? "killers" : rawTab;
 
   function navigateToStats(killer: KillerStats) {
     setStatsNav({ killer, nonce: Date.now() });
@@ -79,6 +96,7 @@ function DashboardContent({ initialKillers }: { initialKillers: KillerStats[] })
   return (
     <AppShell
       mode={mode}
+      isAdmin={isAdmin}
       headerExtra={
         <>
           {seasonsEnabled && <SeasonSelect />}
@@ -110,6 +128,7 @@ function DashboardContent({ initialKillers }: { initialKillers: KillerStats[] })
             killers={killers}
             season={season}
             readOnly={isReadOnly}
+            banned={isBanned}
           />
         ) : (
           <StreakTabTemplate isActive={effectiveTab === "streak"} killers={killers} />
@@ -118,7 +137,7 @@ function DashboardContent({ initialKillers }: { initialKillers: KillerStats[] })
       statisticsContent={<StatisticsTabTemplate killers={killers} isLoading={isLoading} statsNav={statsNav} onNavigateToStats={navigateToStats} perspective={mode} season={season} />}
       teamContent={
         isKiller ? null : crewsEnabled ? (
-          <CrewTeamTabTemplate isActive={effectiveTab === "team"} />
+          <CrewTeamTabTemplate isActive={effectiveTab === "team"} banned={isBanned} />
         ) : (
           <TeamTabTemplate isActive={effectiveTab === "team"} />
         )
@@ -126,6 +145,7 @@ function DashboardContent({ initialKillers }: { initialKillers: KillerStats[] })
       historyContent={<HistoryTabTemplate isActive={effectiveTab === "history"} perspective={mode} season={season} />}
       communityContent={<CommunityTabTemplate isActive={effectiveTab === "community"} perspective={mode} season={season} />}
       rankContent={<RankTabTemplate isActive={effectiveTab === "rank"} perspective={mode} season={season} />}
+      adminContent={isAdmin ? <AdminTabTemplate isActive={effectiveTab === "admin"} /> : null}
     />
   );
 }

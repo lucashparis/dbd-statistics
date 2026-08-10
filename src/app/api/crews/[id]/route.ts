@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewDetail } from "@/lib/crews";
+import { blockIfBanned, isBanned } from "@/lib/ban";
 import { mutationError, parseId, parseSeason } from "@/lib/api";
 
 const patchSchema = z.object({
@@ -18,7 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!crewId) return NextResponse.json({ error: "Invalid crew ID" }, { status: 400 });
 
   const season = parseSeason(new URL(req.url).searchParams.get("season"));
-  const crew = await getCrewDetail(userId, crewId, season);
+  const crew = await getCrewDetail(userId, crewId, season, await isBanned(userId));
   if (!crew) return NextResponse.json({ error: "Crew not found" }, { status: 404 });
   return NextResponse.json(crew);
 }
@@ -30,6 +31,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const crewId = parseId(id);
   if (!crewId) return NextResponse.json({ error: "Invalid crew ID" }, { status: 400 });
+
+  const banned = await blockIfBanned(userId);
+  if (banned) return banned;
 
   const body = await req.json().catch(() => null);
   const parsed = patchSchema.safeParse(body);
@@ -43,7 +47,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   try {
     await prisma.crew.update({ where: { id: crewId }, data: { writePolicy: parsed.data.writePolicy } });
-    const detail = await getCrewDetail(userId, crewId, parseSeason(new URL(req.url).searchParams.get("season")));
+    const detail = await getCrewDetail(userId, crewId, parseSeason(new URL(req.url).searchParams.get("season")), false);
     return NextResponse.json(detail);
   } catch (e) {
     return mutationError("update crew", e);
@@ -57,6 +61,9 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const crewId = parseId(id);
   if (!crewId) return NextResponse.json({ error: "Invalid crew ID" }, { status: 400 });
+
+  const banned = await blockIfBanned(userId);
+  if (banned) return banned;
 
   const crew = await prisma.crew.findUnique({ where: { id: crewId }, select: { ownerId: true } });
   if (!crew) return NextResponse.json({ error: "Crew not found" }, { status: 404 });

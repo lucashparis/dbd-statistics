@@ -3,8 +3,9 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { useKillers } from "@/hooks/useKillers";
 import { createQueryWrapper } from "@/test/queryWrapper";
+import { BAN_CODE, BAN_DESCRIPTION, BAN_TITLE } from "@/lib/ban-message";
 
-vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 
 const killerFixture = {
   id: 1,
@@ -143,5 +144,47 @@ describe("useKillers", () => {
 
     await waitFor(() => expect(result.current.killers[0]?.wins).toBe(99));
     expect(mockFetch.mock.calls.some((c) => (c[0] as string).includes("season=0"))).toBe(true);
+  });
+  it("warns and skips the request entirely when the user is on the ban list", async () => {
+    routeFetch([killerFixture], true);
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture], "survivor", "all", true), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.registerWin(1);
+    });
+
+    expect(toast.warning).toHaveBeenCalledWith(BAN_TITLE, { description: BAN_DESCRIPTION });
+    expect(mockFetch).not.toHaveBeenCalled();
+    // No optimistic patch either — the count must not flash +1 and roll back.
+    expect(result.current.killers[0].wins).toBe(6);
+  });
+
+  it("rolls back and warns when the route rejects a ban mid-session", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.startsWith("/api/killers?")) {
+        return Promise.resolve({ ok: true, json: async () => [killerFixture] });
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ code: BAN_CODE }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => useKillers([killerFixture]), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.registerWin(1);
+    });
+
+    await waitFor(() =>
+      expect(toast.warning).toHaveBeenCalledWith(BAN_TITLE, { description: BAN_DESCRIPTION })
+    );
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(result.current.killers[0].wins).toBe(6);
   });
 });

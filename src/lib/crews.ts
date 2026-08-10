@@ -91,20 +91,29 @@ export function isCrewReady(members: { status: CrewMemberStatus }[]): boolean {
 
 // The single write gate, shared by the log and delete-match routes: a member may
 // write only when the crew is ready and the policy allows them (owner always
-// may; other members only when the policy is `allMembers`).
+// may; other members only when the policy is `allMembers`). A banned viewer
+// never writes — they stay a member so matches logged by the others still fan
+// out to them, but the log/delete controls are theirs no more.
 export function canWrite(
   members: { userId: string; status: CrewMemberStatus }[],
   writePolicy: CrewWritePolicy,
   ownerId: string,
-  viewerId: string
+  viewerId: string,
+  viewerBanned = false
 ): boolean {
+  if (viewerBanned) return false;
   const membership = members.find((m) => m.userId === viewerId);
   if (!membership || membership.status !== "accepted") return false;
   if (!isCrewReady(members)) return false;
   return writePolicy === "allMembers" || viewerId === ownerId;
 }
 
-function serializeCrew(crew: CrewRow, viewerId: string, season: SeasonSelection): Crew {
+function serializeCrew(
+  crew: CrewRow,
+  viewerId: string,
+  season: SeasonSelection,
+  viewerBanned: boolean
+): Crew {
   // All time reads the persisted runs (the write path's source of truth); a
   // season window rebuilds them from the matches inside it, so a run that opened
   // before the rollover shows only the wins that fall in the window.
@@ -132,7 +141,7 @@ function serializeCrew(crew: CrewRow, viewerId: string, season: SeasonSelection)
     ownerId: crew.ownerId,
     isOwner: crew.ownerId === viewerId,
     isReady: isCrewReady(crew.members),
-    canWrite: canWrite(crew.members, crew.writePolicy, crew.ownerId, viewerId),
+    canWrite: canWrite(crew.members, crew.writePolicy, crew.ownerId, viewerId, viewerBanned),
     members: crew.members.map(toMemberView),
     currentStreak: currentStreakOf(runs),
     bestStreak: bestStreakOf(runs),
@@ -146,7 +155,8 @@ function serializeCrew(crew: CrewRow, viewerId: string, season: SeasonSelection)
 
 export async function getCrewsForUser(
   viewerId: string,
-  season: SeasonSelection = "all"
+  season: SeasonSelection = "all",
+  viewerBanned = false
 ): Promise<Crew[]> {
   const memberships = await prisma.crewMember.findMany({
     where: { userId: viewerId, status: "accepted" },
@@ -161,13 +171,14 @@ export async function getCrewsForUser(
     include: crewInclude(season),
   })) as unknown as CrewRow[];
 
-  return crews.map((c) => serializeCrew(c, viewerId, season));
+  return crews.map((c) => serializeCrew(c, viewerId, season, viewerBanned));
 }
 
 export async function getCrewDetail(
   viewerId: string,
   crewId: number,
-  season: SeasonSelection = "all"
+  season: SeasonSelection = "all",
+  viewerBanned = false
 ): Promise<Crew | null> {
   const crew = (await prisma.crew.findUnique({
     where: { id: crewId },
@@ -178,7 +189,7 @@ export async function getCrewDetail(
   const membership = crew.members.find((m) => m.userId === viewerId);
   if (!membership || membership.status !== "accepted") return null;
 
-  return serializeCrew(crew, viewerId, season);
+  return serializeCrew(crew, viewerId, season, viewerBanned);
 }
 
 export async function getInvitesForUser(userId: string): Promise<Invite[]> {

@@ -16,6 +16,7 @@ function userRow(password: string) {
     passwordChangedAt: null,
     preferredMode: "survivor" as const,
     preferredSeason: "current",
+    isAdmin: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

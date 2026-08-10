@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { computeStats } from "@/lib/utils";
-import { toast } from "sonner";
+import { throwIfBanned } from "@/lib/ban-message";
+import { notifyBanned, notifyMutationError } from "@/lib/ban-toast";
 import { queryKeys, invalidateMatchDerived } from "@/lib/query-keys";
 import { seasonKey, type SeasonSelection } from "@/lib/seasons";
 import type { Killer, KillerStats, Perspective } from "@/types/killer";
@@ -64,6 +65,7 @@ function useKillerAction(
         `/api/killers/${id}/${action}?perspective=${perspective}&season=${season}`,
         { method: "PATCH" }
       );
+      await throwIfBanned(res);
       if (!res.ok) throw new Error(ERROR_MESSAGE[action]);
       return (await res.json()) as Killer;
     },
@@ -77,7 +79,7 @@ function useKillerAction(
     },
     onError: (err, _id, context) => {
       if (context?.previous) queryClient.setQueryData(key, context.previous);
-      toast.error(err instanceof Error ? err.message : "Unknown error");
+      notifyMutationError(err, "Unknown error");
     },
     onSettled: () => invalidateMatchDerived(queryClient),
   });
@@ -86,7 +88,8 @@ function useKillerAction(
 export function useKillers(
   initialKillers: Killer[],
   perspective: Perspective = "survivor",
-  season: SeasonSelection = "all"
+  season: SeasonSelection = "all",
+  banned = false
 ): UseKillersReturn {
   // The server seeds `initialKillers` for the mode *and* season the page loaded
   // in. Only seed that exact cache — any other combination must fetch its own
@@ -110,7 +113,13 @@ export function useKillers(
   const pendingId = (m: { isPending: boolean; variables?: number }) =>
     m.isPending ? m.variables ?? null : null;
 
+  // Short-circuit before `onMutate` so a banned user never sees the optimistic
+  // +1 flash. The route still answers 403 for anyone bypassing the client.
   const run = (m: { mutateAsync: (id: number) => Promise<Killer> }) => async (id: number) => {
+    if (banned) {
+      notifyBanned();
+      return;
+    }
     await m.mutateAsync(id).catch(() => {});
   };
 

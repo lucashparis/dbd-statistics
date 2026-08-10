@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { throwIfBanned } from "@/lib/ban-message";
+import { notifyBanned, notifyMutationError } from "@/lib/ban-toast";
 import { queryKeys, invalidateMatchDerived } from "@/lib/query-keys";
 import type { SeasonSelection } from "@/lib/seasons";
 import type { Crew, CrewWritePolicy } from "@/types/crew";
@@ -26,7 +28,7 @@ interface CreateVars {
   writePolicy: CrewWritePolicy;
 }
 
-export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
+export function useCrews(isActive: boolean, season: SeasonSelection = "all", banned = false) {
   const queryClient = useQueryClient();
   const key = queryKeys.crews(season);
 
@@ -46,6 +48,7 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(vars),
       });
+      await throwIfBanned(res);
       if (res.status === 409) throw new Error("A crew with that name already exists");
       if (res.status === 400) throw new Error("Some invited players are not on the community");
       if (!res.ok) throw new Error("Could not create crew");
@@ -55,18 +58,19 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
       setCrew(crew);
       toast.success("Crew created — invites sent");
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not create crew"),
+    onError: (err) => notifyMutationError(err, "Could not create crew"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/crews/${id}`, { method: "DELETE" });
+      await throwIfBanned(res);
       if (!res.ok && res.status !== 204) throw new Error("Could not delete crew");
       return id;
     },
     onSuccess: (id) =>
       queryClient.setQueryData<Crew[]>(key, (old) => old?.filter((c) => c.id !== id)),
-    onError: () => toast.error("Could not delete crew"),
+    onError: (err) => notifyMutationError(err, "Could not delete crew"),
   });
 
   const logMutation = useMutation({
@@ -76,6 +80,7 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ killerId: vars.killerId, result: vars.result }),
       });
+      await throwIfBanned(res);
       if (res.status === 403) throw new Error("You are not allowed to log for this crew yet");
       if (res.status === 409) throw new Error("Past seasons are read-only");
       if (!res.ok) throw new Error("Could not log the match");
@@ -86,7 +91,7 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
       toast.success(vars.result === "win" ? "Win logged — the streak grows" : "Loss logged — streak reset");
       invalidateMatchDerived(queryClient);
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not log the match"),
+    onError: (err) => notifyMutationError(err, "Could not log the match"),
   });
 
   const deleteMatchMutation = useMutation({
@@ -95,6 +100,7 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
         `/api/crews/${vars.crewId}/matches/${vars.matchId}?season=${season}`,
         { method: "DELETE" }
       );
+      await throwIfBanned(res);
       if (res.status === 409) throw new Error("Past seasons are read-only");
       if (!res.ok) throw new Error("Could not remove the match");
       return (await res.json()) as Crew;
@@ -104,7 +110,7 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
       toast.success("Match removed");
       invalidateMatchDerived(queryClient);
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not remove the match"),
+    onError: (err) => notifyMutationError(err, "Could not remove the match"),
   });
 
   const policyMutation = useMutation({
@@ -114,11 +120,12 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ writePolicy: vars.writePolicy }),
       });
+      await throwIfBanned(res);
       if (!res.ok) throw new Error("Could not update the crew");
       return (await res.json()) as Crew;
     },
     onSuccess: (crew) => setCrew(crew),
-    onError: () => toast.error("Could not update the crew"),
+    onError: (err) => notifyMutationError(err, "Could not update the crew"),
   });
 
   const removeMemberMutation = useMutation({
@@ -127,6 +134,7 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
         `/api/crews/${vars.crewId}/members/${vars.userId}?season=${season}`,
         { method: "DELETE" }
       );
+      await throwIfBanned(res);
       if (!res.ok) throw new Error("Could not remove the member");
       return (await res.json()) as Crew;
     },
@@ -134,7 +142,7 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
       setCrew(crew);
       toast.success("Member removed");
     },
-    onError: () => toast.error("Could not remove the member"),
+    onError: (err) => notifyMutationError(err, "Could not remove the member"),
   });
 
   return {
@@ -145,6 +153,10 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
     launching: logMutation.isPending,
     deletingMatchId: deleteMatchMutation.isPending ? deleteMatchMutation.variables?.matchId ?? null : null,
     createCrew: async (vars: CreateVars): Promise<boolean> => {
+      if (banned) {
+        notifyBanned();
+        return false;
+      }
       try {
         await createMutation.mutateAsync(vars);
         return true;
@@ -153,9 +165,14 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
       }
     },
     deleteCrew: async (id: number): Promise<void> => {
+      if (banned) return notifyBanned();
       await deleteMutation.mutateAsync(id).catch(() => {});
     },
     logMatch: async (crewId: number, killerId: number, result: MatchResult): Promise<boolean> => {
+      if (banned) {
+        notifyBanned();
+        return false;
+      }
       try {
         await logMutation.mutateAsync({ crewId, killerId, result });
         return true;
@@ -164,6 +181,10 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
       }
     },
     deleteMatch: async (crewId: number, matchId: number): Promise<boolean> => {
+      if (banned) {
+        notifyBanned();
+        return false;
+      }
       try {
         await deleteMatchMutation.mutateAsync({ crewId, matchId });
         return true;
@@ -172,9 +193,11 @@ export function useCrews(isActive: boolean, season: SeasonSelection = "all") {
       }
     },
     setPolicy: async (crewId: number, writePolicy: CrewWritePolicy): Promise<void> => {
+      if (banned) return notifyBanned();
       await policyMutation.mutateAsync({ crewId, writePolicy }).catch(() => {});
     },
     removeMember: async (crewId: number, userId: string): Promise<void> => {
+      if (banned) return notifyBanned();
       await removeMemberMutation.mutateAsync({ crewId, userId }).catch(() => {});
     },
     refetch: async () => {

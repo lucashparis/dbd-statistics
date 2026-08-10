@@ -5,6 +5,9 @@ import { PATCH } from "@/app/api/killers/[id]/win/route";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidateTag } from "next/cache";
+import { NextResponse } from "next/server";
+import { blockIfBanned } from "@/lib/ban";
+import { BAN_CODE, BAN_TITLE } from "@/lib/ban-message";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
@@ -13,6 +16,10 @@ vi.mock("@/lib/prisma", () => ({
     match: { create: vi.fn(), count: vi.fn() },
     killer: { findUnique: vi.fn() },
   },
+}));
+vi.mock("@/lib/ban", () => ({
+  blockIfBanned: vi.fn(async () => null),
+  isBanned: vi.fn(async () => false),
 }));
 
 const SESSION: Session = { user: { id: "u1" }, expires: "2999-01-01T00:00:00.000Z" };
@@ -45,6 +52,16 @@ describe("PATCH /api/killers/[id]/win", () => {
   it("returns 400 when id is not a number", async () => {
     const res = await PATCH(req(), { params: Promise.resolve({ id: "abc" }) });
     expect(res.status).toBe(400);
+  });
+
+  it("returns the ban 403 without writing a match when the user is on the ban list", async () => {
+    vi.mocked(blockIfBanned).mockResolvedValueOnce(
+      NextResponse.json({ code: BAN_CODE, error: BAN_TITLE }, { status: 403 })
+    );
+    const res = await PATCH(req(), { params: Promise.resolve({ id: "1" }) });
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe(BAN_CODE);
+    expect(vi.mocked(prisma.match.create)).not.toHaveBeenCalled();
   });
 
   it("creates a win match for the user and returns recomputed stats", async () => {

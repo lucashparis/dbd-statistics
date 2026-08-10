@@ -12,6 +12,7 @@ interface CrewStreakTabTemplateProps {
   killers: KillerStats[];
   season?: SeasonSelection;
   readOnly?: boolean;
+  banned?: boolean;
 }
 
 export function CrewStreakTabTemplate({
@@ -19,10 +20,12 @@ export function CrewStreakTabTemplate({
   killers,
   season = "all",
   readOnly = false,
+  banned = false,
 }: CrewStreakTabTemplateProps) {
   const { crews, loading, launching, deletingMatchId, logMatch, deleteMatch } = useCrews(
     isActive,
-    season
+    season,
+    banned
   );
 
   return (

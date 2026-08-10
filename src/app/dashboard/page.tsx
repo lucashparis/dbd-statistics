@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getKillersForUser } from "@/lib/killers";
 import { computeStats } from "@/lib/utils";
-import { killerModeEnabled, seasonsEnabled } from "@/lib/flags";
+import { seasonsEnabled } from "@/lib/flags";
 import { resolvePreferredSeason, type SeasonSelection } from "@/lib/seasons";
 import type { Perspective } from "@/types/killer";
 import { KillersPageClient } from "./page.client";
@@ -15,13 +15,18 @@ export default async function DashboardPage() {
   if (!session?.user) redirect("/login");
 
   const userId = session.user.id;
-  const needsPreferences = killerModeEnabled || seasonsEnabled;
-  const user = needsPreferences
-    ? await prisma.user.findUnique({
-        where: { id: userId },
-        select: { preferredMode: true, preferredSeason: true },
-      })
-    : null;
+  // Always loaded: `isAdmin` gates the Admin tab and the active ban decides
+  // whether the write controls are live. Both are read per request
+  // (`force-dynamic`), so a ban applies without forcing a new sign-in.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      preferredMode: true,
+      preferredSeason: true,
+      isAdmin: true,
+      bans: { where: { liftedAt: null }, select: { id: true }, take: 1 },
+    },
+  });
 
   const initialMode: Perspective = user?.preferredMode ?? "survivor";
   const initialSeason: SeasonSelection = seasonsEnabled
@@ -34,6 +39,8 @@ export default async function DashboardPage() {
       initialKillers={killers}
       initialMode={initialMode}
       initialSeason={initialSeason}
+      isAdmin={user?.isAdmin ?? false}
+      isBanned={(user?.bans.length ?? 0) > 0}
     />
   );
 }

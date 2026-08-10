@@ -4,7 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewDetail } from "@/lib/crews";
 import { revalidateTag } from "next/cache";
+import { NextResponse } from "next/server";
+import { blockIfBanned } from "@/lib/ban";
+import { BAN_CODE } from "@/lib/ban-message";
 
+
+vi.mock("@/lib/ban", () => ({
+  blockIfBanned: vi.fn(async () => null),
+  isBanned: vi.fn(async () => false),
+}));
 vi.mock("@/lib/auth-helpers", () => ({ getSessionUserId: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
 vi.mock("@/lib/crews", async (importOriginal) => {
@@ -64,6 +72,17 @@ describe("POST /api/crews/[id]/matches", () => {
 
   it("returns 400 on invalid input", async () => {
     expect((await POST(post({ result: "maybe" }), params)).status).toBe(400);
+  });
+
+  it("returns the ban 403 without touching the shared streak", async () => {
+    vi.mocked(blockIfBanned).mockResolvedValueOnce(
+      NextResponse.json({ code: BAN_CODE }, { status: 403 })
+    );
+    const res = await POST(post({ killerId: 9, result: "win" }), params);
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe(BAN_CODE);
+    expect(vi.mocked(prisma.crewMatch.create)).not.toHaveBeenCalled();
+    expect(vi.mocked(prisma.match.createMany)).not.toHaveBeenCalled();
   });
 
   it("returns 404 when crew does not exist", async () => {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { decideStreakAction, getTeamStreak } from "@/lib/streak";
+import { blockIfBanned } from "@/lib/ban";
 
 const schema = z.object({
   teamId: z.number().int(),
@@ -14,6 +15,9 @@ const schema = z.object({
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const banned = await blockIfBanned(userId);
+  if (banned) return banned;
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);

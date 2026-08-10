@@ -9,6 +9,10 @@ vi.mock("@/lib/crews", () => ({ getCrewDetail: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: { crew: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() } },
 }));
+vi.mock("@/lib/ban", () => ({
+  blockIfBanned: vi.fn(async () => null),
+  isBanned: vi.fn(async () => false),
+}));
 
 const params = { params: Promise.resolve({ id: "1" }) };
 function patch(body: unknown) {

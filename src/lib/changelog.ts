@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "@/types/changelog";
 
 const ENTRIES: ChangelogEntry[] = [
   {
+    id: "ban-list",
+    feature: "Ban list",
+    date: "2026-08-09",
+    description:
+      "Players caught faking results are moved to a ban list so the ranking stays honest. A banned player can no longer log or undo matches, and cannot host a crew — only the crew matches their teammates log still count for them. Any blocked action shows a warning explaining why.",
+    requestedBy: "Community",
+  },
+  {
     id: "password-reset",
     feature: "Password reset",
     date: "2026-08-04",

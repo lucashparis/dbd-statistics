@@ -55,6 +55,12 @@ describe("canWrite", () => {
   it("pending viewer → false", () => {
     expect(canWrite([accepted("owner"), pending("m2")], "allMembers", "owner", "m2")).toBe(false);
   });
+  it("banned member → false even though they stay in the crew", () => {
+    expect(canWrite(ready, "allMembers", "owner", "m2", true)).toBe(false);
+  });
+  it("banned owner → false, so a banned host cannot log for their own crew", () => {
+    expect(canWrite(ready, "hostOnly", "owner", "owner", true)).toBe(false);
+  });
 });
 
 describe("getCrewDetail season scoping", () => {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewDetail, isCrewReady } from "@/lib/crews";
+import { blockIfBanned } from "@/lib/ban";
 import { decideStreakAction } from "@/lib/streak";
 import { mutationError, parseId, parseSeason, readOnlySeason } from "@/lib/api";
 
@@ -23,6 +24,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const season = parseSeason(new URL(req.url).searchParams.get("season"));
   const blocked = readOnlySeason(season);
   if (blocked) return blocked;
+
+  // A banned user never logs a match — not even for a crew they belong to. The
+  // crew matches someone else logs still fan out to them and count.
+  const banned = await blockIfBanned(userId);
+  if (banned) return banned;
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
@@ -98,6 +104,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   for (const memberId of acceptedIds) revalidateTag(`streaks:${memberId}`, "max");
   revalidateTag("community", "max");
 
-  const detail = await getCrewDetail(userId, crewId, season);
+  const detail = await getCrewDetail(userId, crewId, season, false);
   return NextResponse.json(detail, { status: 201 });
 }

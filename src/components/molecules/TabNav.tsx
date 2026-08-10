@@ -4,7 +4,15 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { TabButton } from "@/components/atoms/TabButton";
 
-export type TabId = "killers" | "streak" | "statistics" | "team" | "history" | "community" | "rank";
+export type TabId =
+  | "killers"
+  | "streak"
+  | "statistics"
+  | "team"
+  | "history"
+  | "community"
+  | "rank"
+  | "admin";
 
 interface Tab {
   id: TabId;

@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getTeamStreak, recomputeStreakRuns } from "@/lib/streak";
+import { blockIfBanned } from "@/lib/ban";
 
 export async function DELETE(
   _req: Request,
@@ -10,6 +11,9 @@ export async function DELETE(
 ) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const banned = await blockIfBanned(userId);
+  if (banned) return banned;
 
   const { id } = await params;
   const matchId = Number(id);

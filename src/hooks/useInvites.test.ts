@@ -43,6 +43,6 @@ describe("useInvites", () => {
     await act(async () => {
       await result.current.accept(5);
     });
-    expect(result.current.count).toBe(0);
+    await waitFor(() => expect(result.current.count).toBe(0));
   });
 });

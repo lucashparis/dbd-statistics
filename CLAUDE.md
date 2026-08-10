@@ -89,6 +89,7 @@ Multi-user schema. Full model in `prisma/schema.prisma`:
 - `CrewMember` — membership + invite (`status` = `pending | accepted | declined`, `isOwner`, `@@unique([crewId, userId])`). The owner is auto-`accepted`; up to 3 others are invited by community nick. A crew is **ready** only when every member is `accepted`.
 - `CrewMatch` — the shared match event (`crewId`, `killerId`, `result`, `loggedByUserId`, `crewStreakRunId`). **The source of truth for the shared crew streak** (counted once per event).
 - `CrewStreakRun` — a crew's win streak (`winCount`, `status`), same semantics as `StreakRun` but keyed by `crewId`.
+- `Ban` — one moderation event. A user is **on the ban list** while a row with `liftedAt = null` exists; lifting stamps `liftedAt`/`liftedById` instead of deleting, so the history survives. `User.isAdmin` gates the admin surfaces and is set from the DB only (`npm run admin:set -- --email=…`) — no route can promote an account.
 - `Profile` — a user's **public** community profile (1:1 with `User`, `userId @unique`). Fields: `nick`, `channelUrl?`, `mainKillerId?` (FK → `Killer`, `onDelete: SetNull`). **The presence of the row is the consent signal** — a user with no `Profile` is invisible to the community. `name` is not duplicated here; it lives on `User.name` and is edited in the same profile form. `mainSurvId?` (FK → `Survivor`, `onDelete: SetNull`) is edited in the same profile form ("Main survivor") and persisted by `PUT /api/profile`. `mainSurv` **is** part of the public community projection (`src/lib/community.ts`) — only the survivor **name** is surfaced (as a "Surv · {name}" line on the public profile and the community/carousel card); the avatar stays the main killer's image.
 
 > **ADR (resolves audit M17): `Match` is the single source of truth.** `Killer` deliberately has **no** denormalized `wins`/`losses`. Any aggregate (grid, pie chart, history, streaks) must derive from `Match` via `getKillersForUser`/`getKillerForUser` in `src/lib/killers.ts`. Do **not** re-introduce counter columns — that reopens the drift bug this design eliminated.
@@ -103,6 +104,8 @@ Multi-user schema. Full model in `prisma/schema.prisma`:
 
 > **ADR (Killer mode — `Match.perspective`).** A `Match` carries a `perspective` (`survivor | killer`, `@default(survivor)`) recording whether the game was played **as survivor** (against a killer — the original app) or **as killer** (playing that killer). This keeps `Match` the single source of truth: every match-derived read (killers grid, history, streaks, community, rank) filters by `perspective`, and the survivor and killer datasets never contaminate each other. **Every derivation helper defaults `perspective` to `"survivor"`** (`getKillersForUser`, `getKillerForUser`, `statsByUser`, `computePublicProfiles`, `computePublicProfile`, `computeRankBase`, `getRankedProfiles`), matching the column default so pre-existing rows and any un-updated caller stay survivor-scoped. **Streaks and crews/teams are survivor-only** — killer matches always have `teamId=null`/`crewMatchId=null`/`streakRunId=null`, and `computeStreaksForUser` filters `perspective: "survivor"`. Killer write routes call `revalidateTag("community")` **but not** `streaks:<id>` (no killer streak). The current UI mode is a client `ModeContext` (`src/contexts/ModeContext.tsx`) seeded from `User.preferredMode` and persisted via `PATCH /api/me/preferences`; the toggle lives in `AppHeader` (via the `headerExtra` slot) and is gated by the `killerModeEnabled` flag. **Client query keys include the perspective** (`queryKeys.killers(p)` etc.) so the two modes' caches don't collide; `invalidateMatchDerived` invalidates by first-segment prefix so it busts both. Killer mode hides the Streak/Team tabs (`AppShell` derives its tab list from `mode`; `page.client` derives an `effectiveTab` rather than resetting state in an effect). Public surfaces (home carousel + `/community/[userId]`) show both perspectives with a client toggle — killer details carry `streaks: null`.
 
+> **ADR (Ban list — a write gate, not a data filter).** A banned user's existing matches stay in `Match`: removing them would rewrite history and reopen the drift the `Match`-as-source-of-truth ADR closed. What a ban changes is **who may write**. `blockIfBanned(userId)` in `src/lib/ban.ts` is the single gate, called after auth/validation in every match-writing or crew-hosting route: the four `killers/[id]/{win,loss}[/undo]` writes, `POST /api/crews` (a banned user cannot be a **host**), `PATCH`/`DELETE /api/crews/[id]`, `POST`/`DELETE` on the crew match routes, `DELETE /api/crews/[id]/members/[userId]`, and the legacy `streaks/matches` writes. It answers `403 { code: "BANNED", error, description }`. **Accepting an invite and being a crew member stay allowed** — that is the one path by which a banned player's stats still move, because a `CrewMatch` logged by a teammate fans out to every accepted member. `canWrite()` takes a `viewerBanned` flag so the crew UI reflects the gate (a banned owner cannot log for their own crew, but the other members still can when the policy is `allMembers`). Client side, `throwIfBanned(res)` (`src/lib/ban-message.ts`, no server imports) turns the coded 403 into a `BannedError`, and `notifyBanned`/`notifyMutationError` (`src/lib/ban-toast.ts`) raise the warning toast. `useKillers`/`useCrews` take a `banned` flag and short-circuit **before** `onMutate` so no optimistic `+1` flashes. The flag is read per request in `dashboard/page.tsx` (`force-dynamic`), so a ban takes hold without a new sign-in. **Copy is Portuguese by product decision** — `BAN_TITLE = "Usuário em Ban List"`, `BAN_DESCRIPTION = "Comportamento suspeito/indequado"` — the only exception to the English-UI rule, pinned by a test.
+
 **Seeded with 43 killers and 46 survivors.** Run `npm run db:seed` to repopulate. The seed upserts by `name` and only sets `name`/`imageUrl`. **The killer array is mirrored from the production DB** (personalized names + local `/public/images/killers/*.webp`), so re-seeding is idempotent against the real data — do **not** "normalize" the killer names to English or point them back at wiki URLs (that reopens the incident where a seed run renamed killers and created duplicate rows). Survivor images come from `static.wikia.nocookie.net`. Remote hosts are allowlisted in `next.config.ts`.
 
 ### Useful DB scripts
@@ -112,6 +115,9 @@ npm run db:push      # push schema changes (no migration files)
 npm run db:seed      # seed / re-seed killers
 npm run db:studio    # open Prisma Studio
 npm run db:generate  # regenerate Prisma client after schema changes
+
+npm run admin:set -- --email=you@example.com          # grant admin (add --revoke to remove)
+npm run matches:purge -- --nick=<nick> --result=win --limit=20   # dry run; add --apply to delete
 ```
 
 ---
@@ -152,6 +158,9 @@ Every route below (except NextAuth's own handler and `signup`) requires a sessio
 | GET | `/api/invites` | Current user's pending crew invites (the avatar bell) |
 | POST | `/api/invites/[id]/respond` | Accept or decline an invite (`{ action }`) |
 | PATCH | `/api/me/preferences` | Persist the current user's play mode and/or season intent (`{ mode?: "survivor" \| "killer", season?: "current" \| "all" \| "<n>" }`; at least one field required) |
+| GET / POST | `/api/admin/bans` | List the ban list (active + history) / add a user (admin only; non-admins get `404`) |
+| DELETE | `/api/admin/bans/[id]` | Lift a ban — keeps the row as history (admin only) |
+| GET | `/api/admin/users` | Search public profiles to ban (`?q=`, ≥2 chars; never selects `email`) |
 | POST | `/api/signup` | Create an account (public) |
 | GET / POST | `/api/auth/[...nextauth]` | NextAuth handlers |
 
@@ -275,6 +284,8 @@ src/app/api/killers/route.ts  → src/app/api/killers/route.test.ts
 ## Language
 
 All user-facing text must be in **English** — labels, headings, descriptions, empty states, button text, and any other copy visible to the user. Do not use Portuguese or any other language in the UI. Date/time formatting may use `pt-BR` locale.
+
+> Exception (ban list): the moderation warning is Portuguese by explicit product decision — `BAN_TITLE`/`BAN_DESCRIPTION` in `src/lib/ban-message.ts`. Everything else in the ban/admin surface is English.
 
 > Exception (supersedes audit B11): killer names are **user-owned roster data**, not translatable UI copy. The seed mirrors the production roster verbatim, which intentionally carries Portuguese and personalized names (e.g. "Caça Coroas", "BrenoGorgon", "Trapalisson (Trapaça)"). Do **not** normalize these to English — that would overwrite the user's real data. This rule applies to static UI copy, not to roster rows.
 

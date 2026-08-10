@@ -32,6 +32,7 @@ function userRow(overrides: Partial<{ id: string; email: string }> = {}) {
     passwordChangedAt: null,
     preferredMode: "survivor" as const,
     preferredSeason: "current",
+    isAdmin: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getKillerForUser } from "@/lib/killers";
+import { blockIfBanned } from "@/lib/ban";
 import { parseId, parsePerspective, parseSeason, readOnlySeason } from "@/lib/api";
 import { seasonWhere } from "@/lib/seasons";
 
@@ -26,6 +27,9 @@ export async function PATCH(
   const season = parseSeason(sp.get("season"));
   const blocked = readOnlySeason(season);
   if (blocked) return blocked;
+
+  const banned = await blockIfBanned(session.user.id);
+  if (banned) return banned;
 
   try {
     const userId = session.user.id;

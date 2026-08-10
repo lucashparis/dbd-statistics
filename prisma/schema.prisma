@@ -48,6 +48,9 @@ model User {
   // intent means a preference saved during one season still opens the *new*
   // current season after a rollover instead of pinning a finished one.
   preferredSeason String    @default("current")
+  // Grants access to the admin surfaces (the ban list). Set from the DB only —
+  // there is no route that can promote an account.
+  isAdmin       Boolean     @default(false)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   players   Player[]
@@ -60,6 +63,29 @@ model User {
   crewsOwned         Crew[]       @relation("CrewOwner")
   crewMemberships    CrewMember[]
   crewMatchesLogged  CrewMatch[]  @relation("CrewMatchLogger")
+
+  bans        Ban[] @relation("BanTarget")
+  bansIssued  Ban[] @relation("BanIssuer")
+  bansLifted  Ban[] @relation("BanLifter")
+}
+
+// One row per moderation event, kept as history — lifting a ban sets `liftedAt`
+// instead of deleting the row. A user is on the ban list while a row with
+// `liftedAt = null` exists (see `isBanned` in src/lib/ban.ts).
+model Ban {
+  id         String    @id @default(cuid())
+  userId     String
+  reason     String
+  bannedById String
+  liftedById String?
+  liftedAt   DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation("BanTarget", fields: [userId], references: [id], onDelete: Cascade)
+  bannedBy   User      @relation("BanIssuer", fields: [bannedById], references: [id], onDelete: Cascade)
+  liftedBy   User?     @relation("BanLifter", fields: [liftedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, liftedAt])
+  @@index([createdAt])
 }
 
 // A single-use, time-limited token for the "forgot password" flow. Only the

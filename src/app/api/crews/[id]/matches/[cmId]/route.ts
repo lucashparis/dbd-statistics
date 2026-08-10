@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { canWrite, getCrewDetail } from "@/lib/crews";
+import { blockIfBanned } from "@/lib/ban";
 import { recomputeStreakRuns } from "@/lib/streak";
 import { mutationError, parseId, parseSeason, readOnlySeason } from "@/lib/api";
 
@@ -23,6 +24,9 @@ export async function DELETE(
   const season = parseSeason(new URL(req.url).searchParams.get("season"));
   const blocked = readOnlySeason(season);
   if (blocked) return blocked;
+
+  const banned = await blockIfBanned(userId);
+  if (banned) return banned;
 
   const crewMatch = await prisma.crewMatch.findUnique({
     where: { id: crewMatchId },
@@ -82,6 +86,6 @@ export async function DELETE(
   for (const memberId of acceptedIds) revalidateTag(`streaks:${memberId}`, "max");
   revalidateTag("community", "max");
 
-  const detail = await getCrewDetail(userId, crewId, season);
+  const detail = await getCrewDetail(userId, crewId, season, false);
   return NextResponse.json(detail);
 }

@@ -9,6 +9,10 @@ vi.mock("@/lib/crews", () => ({ getCrewDetail: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: { crew: { findUnique: vi.fn() }, crewMember: { delete: vi.fn() } },
 }));
+vi.mock("@/lib/ban", () => ({
+  blockIfBanned: vi.fn(async () => null),
+  isBanned: vi.fn(async () => false),
+}));
 
 const req = new Request("http://localhost/api/crews/1/members/u2", { method: "DELETE" });
 const params = (userId: string) => ({ params: Promise.resolve({ id: "1", userId }) });

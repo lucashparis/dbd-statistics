@@ -24,6 +24,8 @@ const KILLER_TABS = [
   { id: "history" as TabId, label: "History" },
 ];
 
+const ADMIN_TAB = { id: "admin" as TabId, label: "Admin" };
+
 interface AppShellProps {
   killersContent: React.ReactNode;
   streakContent: React.ReactNode;
@@ -32,14 +34,17 @@ interface AppShellProps {
   historyContent: React.ReactNode;
   communityContent: React.ReactNode;
   rankContent: React.ReactNode;
+  adminContent?: React.ReactNode;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   mode?: Perspective;
+  isAdmin?: boolean;
   headerExtra?: React.ReactNode;
 }
 
-export function AppShell({ killersContent, streakContent, statisticsContent, teamContent, historyContent, communityContent, rankContent, activeTab, onTabChange, mode = "survivor", headerExtra }: AppShellProps) {
-  const tabs = mode === "killer" ? KILLER_TABS : SURVIVOR_TABS;
+export function AppShell({ killersContent, streakContent, statisticsContent, teamContent, historyContent, communityContent, rankContent, adminContent, activeTab, onTabChange, mode = "survivor", isAdmin = false, headerExtra }: AppShellProps) {
+  const baseTabs = mode === "killer" ? KILLER_TABS : SURVIVOR_TABS;
+  const tabs = isAdmin ? [...baseTabs, ADMIN_TAB] : baseTabs;
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -69,6 +74,11 @@ export function AppShell({ killersContent, streakContent, statisticsContent, tea
         <div role="tabpanel" hidden={activeTab !== "rank"}>
           {rankContent}
         </div>
+        {isAdmin && (
+          <div role="tabpanel" hidden={activeTab !== "admin"}>
+            {adminContent}
+          </div>
+        )}
       </main>
     </div>
   );

@@ -59,7 +59,7 @@ describe("useCrews", () => {
       ok = await result.current.createCrew({ name: "New", inviteeUserIds: [], writePolicy: "allMembers" });
     });
     expect(ok).toBe(true);
-    expect(result.current.crews.some((c) => c.id === 2)).toBe(true);
+    await waitFor(() => expect(result.current.crews.some((c) => c.id === 2)).toBe(true));
   });
 
   it("logs a match and upserts the returned crew", async () => {
@@ -74,7 +74,7 @@ describe("useCrews", () => {
       ok = await result.current.logMatch(1, 9, "win");
     });
     expect(ok).toBe(true);
-    expect(result.current.crews[0].currentStreak).toBe(1);
+    await waitFor(() => expect(result.current.crews[0].currentStreak).toBe(1));
   });
 
   it("returns false when logging is forbidden", async () => {

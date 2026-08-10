@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getTeamStreak } from "@/lib/streak";
 
+
+vi.mock("@/lib/ban", () => ({
+  blockIfBanned: vi.fn(async () => null),
+  isBanned: vi.fn(async () => false),
+}));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
 vi.mock("@/lib/auth-helpers", () => ({ getSessionUserId: vi.fn() }));
 vi.mock("@/lib/streak", async (importOriginal) => {

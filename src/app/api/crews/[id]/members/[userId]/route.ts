@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewDetail } from "@/lib/crews";
+import { blockIfBanned } from "@/lib/ban";
 import { mutationError, parseId, parseSeason } from "@/lib/api";
 
 export async function DELETE(
@@ -15,6 +16,9 @@ export async function DELETE(
   const crewId = parseId(id);
   if (!crewId) return NextResponse.json({ error: "Invalid crew ID" }, { status: 400 });
 
+  const banned = await blockIfBanned(callerId);
+  if (banned) return banned;
+
   const crew = await prisma.crew.findUnique({ where: { id: crewId }, select: { ownerId: true } });
   if (!crew) return NextResponse.json({ error: "Crew not found" }, { status: 404 });
   if (crew.ownerId !== callerId) {
@@ -27,7 +31,7 @@ export async function DELETE(
   try {
     await prisma.crewMember.delete({ where: { crewId_userId: { crewId, userId: targetId } } });
     const season = parseSeason(new URL(req.url).searchParams.get("season"));
-    const detail = await getCrewDetail(callerId, crewId, season);
+    const detail = await getCrewDetail(callerId, crewId, season, false);
     return NextResponse.json(detail);
   } catch (e) {
     return mutationError("remove crew member", e);

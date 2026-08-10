@@ -12,6 +12,10 @@ vi.mock("@/lib/prisma", () => ({
     killer: { findUnique: vi.fn() },
   },
 }));
+vi.mock("@/lib/ban", () => ({
+  blockIfBanned: vi.fn(async () => null),
+  isBanned: vi.fn(async () => false),
+}));
 
 const SESSION: Session = { user: { id: "u1" }, expires: "2999-01-01T00:00:00.000Z" };
 const authMock = vi.mocked(auth as unknown as () => Promise<Session | null>);

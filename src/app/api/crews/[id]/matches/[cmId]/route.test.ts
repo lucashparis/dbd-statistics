@@ -5,6 +5,11 @@ import { getSessionUserId } from "@/lib/auth-helpers";
 import { getCrewDetail } from "@/lib/crews";
 import { revalidateTag } from "next/cache";
 
+
+vi.mock("@/lib/ban", () => ({
+  blockIfBanned: vi.fn(async () => null),
+  isBanned: vi.fn(async () => false),
+}));
 vi.mock("@/lib/auth-helpers", () => ({ getSessionUserId: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
 vi.mock("@/lib/crews", async (importOriginal) => {
