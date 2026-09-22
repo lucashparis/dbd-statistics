@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const killers = [
-  { name: "Caça Coroas", imageUrl: "/images/killers/caca-coroas.webp" },
+  { name: "Trapper (Caçador)", imageUrl: "/images/killers/cacador.webp" },
   { name: "Wraith (Espectro)", imageUrl: "/images/killers/wraith.webp" },
   { name: "Hillbilly (Billy)", imageUrl: "/images/killers/hillbilly.webp" },
   { name: "Nurse", imageUrl: "/images/killers/nurse.webp" },
@@ -23,8 +23,8 @@ const killers = [
   { name: "Deathslinger (Mercenário)", imageUrl: "/images/killers/deathslinger.webp" },
   { name: "Executioner (Pyramid Head)", imageUrl: "/images/killers/executioner.webp" },
   { name: "Blight", imageUrl: "/images/killers/blight.webp" },
-  { name: "Twins (Gêmeos da compreensão)", imageUrl: "/images/killers/gemeos-da-compreensao.webp" },
-  { name: "Trapalisson (Trapaça)", imageUrl: "/images/killers/trapalisson.webp" },
+  { name: "Twins (Gêmeos)", imageUrl: "/images/killers/gemeos.webp" },
+  { name: "Trickster (Trapaça)", imageUrl: "/images/killers/trapaca.webp" },
   { name: "Nemesis", imageUrl: "/images/killers/nemesis.webp" },
   { name: "Cenobite", imageUrl: "/images/killers/cenobite.webp" },
   { name: "Artist (Artista)", imageUrl: "/images/killers/artist.webp" },
@@ -38,7 +38,7 @@ const killers = [
   { name: "Unknown (Desconhecido)", imageUrl: "/images/killers/unknown.webp" },
   { name: "Lich (D&D)", imageUrl: "/images/killers/lich.webp" },
   { name: "Dark Lord (Dracula)", imageUrl: "/images/killers/dark-lord.webp" },
-  { name: "Houndmaster (Fran da Matilha)", imageUrl: "/images/killers/mestra-do-grauge.webp" },
+  { name: "Houndmaster (Mestra da Matilha)", imageUrl: "/images/killers/mestra.webp" },
   { name: "Shape (Michael Myers)", imageUrl: "/images/killers/shape.webp" },
   { name: "Ghoul (Kaneki)", imageUrl: "/images/killers/kaneki.webp" },
   { name: "Animatronic", imageUrl: "/images/killers/animatronic.webp" },
@@ -46,6 +46,7 @@ const killers = [
   { name: "Adriana", imageUrl: "/images/killers/adriana.webp" },
   { name: "Vecna (Stranger Things)", imageUrl: "/images/killers/vecna.webp" },
   { name: "Jason", imageUrl: "/images/killers/jason.webp" },
+  { name: "Julgamento", imageUrl: "/images/killers/julgamento.webp" },
 ];
 
 const survivors = [
