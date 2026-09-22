@@ -18,7 +18,7 @@ const killers = [
   { name: "Legion", imageUrl: "/images/killers/legion.webp" },
   { name: "Plague (Praga)", imageUrl: "/images/killers/plague.webp" },
   { name: "Ghost Face", imageUrl: "/images/killers/ghost-face.webp" },
-  { name: "BrenoGorgon", imageUrl: "/images/killers/brenogorgon.webp" },
+  { name: "Demogorgon", imageUrl: "/images/killers/demogorgon.webp" },
   { name: "Oni", imageUrl: "/images/killers/oni.webp" },
   { name: "Deathslinger (Mercenário)", imageUrl: "/images/killers/deathslinger.webp" },
   { name: "Executioner (Pyramid Head)", imageUrl: "/images/killers/executioner.webp" },
