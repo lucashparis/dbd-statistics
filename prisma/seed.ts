@@ -47,6 +47,7 @@ const killers = [
   { name: "Vecna (Stranger Things)", imageUrl: "/images/killers/vecna.webp" },
   { name: "Jason", imageUrl: "/images/killers/jason.webp" },
   { name: "Julgamento", imageUrl: "/images/killers/julgamento.webp" },
+  { name: "Art (The Clown)", imageUrl: "/images/killers/art.webp" },
 ];
 
 const survivors = [
